@@ -65,58 +65,58 @@ Os formatos suportados, sintaxe e parâmetros disponíveis seguem:
 `-t` (default `BP:0/KH:0/SH:0`)
      Especifica os tipos de testes desejados, separados por barra (/), e os parâmetros procedimentais, combinados aos respectivos testes por dois pontos (:). 
      Se desejar repetir um tipo de teste via diferentes procedimentos numa só execução do programa, os parâmetros procedimentais vão separados entre si por vírgulas (,).
-		
- 		ex: `-t AU:1,2,3,4/BP:3,4/KH:-3` 
+          
+          ex: `-t AU:1,2,3,4/BP:3,4/KH:-3` 
  
- 		Tipos de testes:
- 		[BP] - Bootstrap Proportion
- 		[KH] - Kishino & Hasegawa (1989)
- 		[SH] - Shimodaira & Hasegawa (1999)
- 		[SOWH] - Teste Paramétrico (Swofford, Olsen, Waddel & Hillis, 1996)
- 		[ELW] - Expected Likelihood Weights (Strimmer & Rambaut, 2001) 
- 		[AU] - Approximatelly Unbiased (Shimodaira, 2002)
+          Tipos de testes:
+          [BP] - Bootstrap Proportion
+          [KH] - Kishino & Hasegawa (1989)
+          [SH] - Shimodaira & Hasegawa (1999)
+          [SOWH] - Teste Paramétrico (Swofford, Olsen, Waddel & Hillis, 1996)
+          [ELW] - Expected Likelihood Weights (Strimmer & Rambaut, 2001) 
+          [AU] - Approximatelly Unbiased (Shimodaira, 2002)
  
- 		Parâmetros procedimentais:
- 		[-3] - aproximação normal
- 		[-2] - bootstrap paramétrico (simulações) com otimização completa
- 		[-1] - bootstrap paramétrico com otimização parcial (default para o SOWH)
- 		[0] - RELL (default para os demais testes)
- 		[1] - bootstrap não-paramétrico (tradicional) com otimização parcial
- 		[2] - boot. não-paramétrico com otimização completa
- 		[3] - boot. não-paramétrico com busca pela árvore de ML e otimização parcial
- 		[4] - boot. não-paramétrico com busca pela árvore de ML e otimização completa
+          Parâmetros procedimentais:
+          [-3] - aproximação normal
+          [-2] - bootstrap paramétrico (simulações) com otimização completa
+          [-1] - bootstrap paramétrico com otimização parcial (default para o SOWH)
+          [0] - RELL (default para os demais testes)
+          [1] - bootstrap não-paramétrico (tradicional) com otimização parcial
+          [2] - boot. não-paramétrico com otimização completa
+          [3] - boot. não-paramétrico com busca pela árvore de ML e otimização parcial
+          [4] - boot. não-paramétrico com busca pela árvore de ML e otimização completa
  
- 			`-3`: válido apenas com `KH`
- 				Assume que os valores esperados de diferença de verossimilhança (deltas) tem distribuição normal com média zero.
- 				Assume que o desvio padrão (DP) proporcional ao DP dos valores de delta por sítio do alinhamento calculados entre as árvores comparadas, dispensando procedimentos de replicação.
+               `-3`: válido apenas com `KH`
+                    Assume que os valores esperados de diferença de verossimilhança (deltas) tem distribuição normal com média zero.
+                    Assume que o desvio padrão (DP) proporcional ao DP dos valores de delta por sítio do alinhamento calculados entre as árvores comparadas, dispensando procedimentos de replicação.
  
- 			`-2`: válido apenas com `SOWH`
- 				Utiliza cada uma das árvores (exceto a de maior verossimilhança para o alinhamento original), junto a seus comprimentos de ramo e parâmetros de substituição, para simular diferentes sets de alinhamentos-réplica.
- 				Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas simuladas, reestima os parâmetros de substituição.
+               `-2`: válido apenas com `SOWH`
+                    Utiliza cada uma das árvores (exceto a de maior verossimilhança para o alinhamento original), junto a seus comprimentos de ramo e parâmetros de substituição, para simular diferentes sets de alinhamentos-réplica.
+                    Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas simuladas, reestima os parâmetros de substituição.
  
- 			`-1`: válido apenas com `SOWH` (default)
- 				======//======
- 				Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas simuladas, fixa os parâmetros de substituição já estimados para o alinhamento original.
+               `-1`: válido apenas com `SOWH` (default)
+                    ======//======
+                    Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas simuladas, fixa os parâmetros de substituição já estimados para o alinhamento original.
  
- 			 `0`: válido com `KH`, `SH`, `ELW`, `BP` e `AU` (default)
- 			 	Sorteia diretamente dos valores de verossimilhança por sítio calculados para cada árvore, dado o alinhamento original. 
- 			 	Dessa forma, obtém verossimilhanças-réplica (da soma de cada set de valores sorteado), dispensando alinhamentos-réplica e a reestimação qualquer parâmetro.
+                `0`: válido com `KH`, `SH`, `ELW`, `BP` e `AU` (default)
+                    Sorteia diretamente dos valores de verossimilhança por sítio calculados para cada árvore, dado o alinhamento original. 
+                    Dessa forma, obtém verossimilhanças-réplica (da soma de cada set de valores sorteado), dispensando alinhamentos-réplica e a reestimação qualquer parâmetro.
  
- 			 `1`: válido com `KH`, `SH`, `ELW`, `BP` e `AU`
- 			 	Sorteia sítios do alinhamento original, com reposição, para formar alinhamentos-réplica.
- 				Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas sorteadas, fixa os parâmetros de substituição já estimados para o alinhamento original.
+                `1`: válido com `KH`, `SH`, `ELW`, `BP` e `AU`
+                    Sorteia sítios do alinhamento original, com reposição, para formar alinhamentos-réplica.
+                    Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas sorteadas, fixa os parâmetros de substituição já estimados para o alinhamento original.
  
- 			 `2`: válido com `KH`, `SH`, `ELW`, `BP` e `AU`
- 			 	======//======
- 				Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas sorteadas, reestima os parâmetros de substituição.
+                `2`: válido com `KH`, `SH`, `ELW`, `BP` e `AU`
+                    ======//======
+                    Ao recalcular a verossimilhança de cada árvore, para as diferentes réplicas sorteadas, reestima os parâmetros de substituição.
  
- 			 `3`: válido com `BP` e `AU`
- 			 	======//======
- 			 	Busca a árvore de maxima verossimilhança (ML) para cada réplica sorteada, fixando os parâmetros de substituição de ML estimados para o alinhamento original.
+                `3`: válido com `BP` e `AU`
+                    ======//======
+                    Busca a árvore de maxima verossimilhança (ML) para cada réplica sorteada, fixando os parâmetros de substituição de ML estimados para o alinhamento original.
  
- 			 `4`: válido com `BP` e `AU`
- 			 	======//======
- 			 	Busca a árvore de maxima verossimilhança (ML) para cada réplica sorteada, reestimando os parâmetros de substituição.
+                `4`: válido com `BP` e `AU`
+                    ======//======
+                    Busca a árvore de maxima verossimilhança (ML) para cada réplica sorteada, reestimando os parâmetros de substituição.
  
  
  
