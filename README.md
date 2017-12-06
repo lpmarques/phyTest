@@ -69,22 +69,22 @@ Se desejar repetir um tipo de teste via diferentes procedimentos numa só execu�
 ex: `-t AU:1,2,3,4/BP:3,4/KH:-3` 
  
 Tipos de testes:
-[BP] - Bootstrap Proportion
-[KH] - Kishino & Hasegawa (1989)
-[SH] - Shimodaira & Hasegawa (1999)
-[SOWH] - Teste Paramétrico (Swofford, Olsen, Waddel & Hillis, 1996)
-[ELW] - Expected Likelihood Weights (Strimmer & Rambaut, 2001) 
-[AU] - Approximatelly Unbiased (Shimodaira, 2002)
+-[BP] - Bootstrap Proportion
+-[KH] - Kishino & Hasegawa (1989)
+-[SH] - Shimodaira & Hasegawa (1999)
+-[SOWH] - Teste Paramétrico (Swofford, Olsen, Waddel & Hillis, 1996)
+-[ELW] - Expected Likelihood Weights (Strimmer & Rambaut, 2001) 
+-[AU] - Approximatelly Unbiased (Shimodaira, 2002)
  
 Parâmetros procedimentais:
-[-3] - aproximação normal
-[-2] - bootstrap paramétrico (simulações) com otimização completa
-[-1] - bootstrap paramétrico com otimização parcial (default para o SOWH)
-[0] - RELL (default para os demais testes)
-[1] - bootstrap não-paramétrico (tradicional) com otimização parcial
-[2] - boot. não-paramétrico com otimização completa
-[3] - boot. não-paramétrico com busca pela árvore de ML e otimização parcial
-[4] - boot. não-paramétrico com busca pela árvore de ML e otimização completa
+-[-3] - aproximação normal
+-[-2] - bootstrap paramétrico (simulações) com otimização completa
+-[-1] - bootstrap paramétrico com otimização parcial (default para o SOWH)
+-[0] - RELL (default para os demais testes)
+-[1] - bootstrap não-paramétrico (tradicional) com otimização parcial
+-[2] - boot. não-paramétrico com otimização completa
+-[3] - boot. não-paramétrico com busca pela árvore de ML e otimização parcial
+-[4] - boot. não-paramétrico com busca pela árvore de ML e otimização completa
  
 `-3`: válido apenas com `KH`
 Assume que os valores esperados de diferença de verossimilhança (deltas) tem distribuição normal com média zero.
