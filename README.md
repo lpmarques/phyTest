@@ -1,15 +1,15 @@
-#phyTest (versão 0.5 - alpha)
+# phyTest (versão 0.5 - alpha)
 
-##Descrição
+## Descrição
 
 Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.5) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
 
 A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e procedimentos que disponibiliza para a realização de cada um. Com o software em mãos, o usuário terá mais liberdade para ponderar a confiança em suas filogenias diante de diferentes aproximações estatísticas e níveis de otimização de parâmetros. O programa também foi arquitetado visando maximizar o aproveitamento da memória RAM, para possibilitar que testes complexos (envolvendo grande número de réplicas) tornem-se acessíveis para hardware simples.
 
 
-##Configurações de uso
+## Configurações de uso
 
-###Tutorial rápido
+### Tutorial rápido
 
 Para rodar o programa chame:
 ```
@@ -25,46 +25,46 @@ Os formatos suportados, sintaxe e parâmetros disponíveis seguem:
 -t [BP/KH/SH/ELW/AU/SOWH]
 ```
 
-###Detalhamento
+### Detalhamento
 
 `-s` (obrigatório; sem default)
-	Especifica o arquivo contendo alinhamento que se deseja analisar.
-	Os formatos suportados são fasta sequencial (.fas|.fasta|.fst) e phylip sequencial (.phy|.phylip).
+     Especifica o arquivo contendo alinhamento que se deseja analisar.
+     Os formatos suportados são fasta sequencial (.fas|.fasta|.fst) e phylip sequencial (.phy|.phylip).
 
 
 `-m` (obrigatório; sem default)
-	Especifica o modelo de substituição de nucleotídeos a ser utilizado nas análises (otimização de parâmetros e cálculos de verossimilhança) tanto do alinhamento original (dado via -s) quanto de eventuais réplicas que venham a ser produzidas. 
-	Segue o mesmo formato aceito no programa IQTREE; matriz de substituição e demais parâmetros separados por '+'.
+     Especifica o modelo de substituição de nucleotídeos a ser utilizado nas análises (otimização de parâmetros e cálculos de verossimilhança) tanto do alinhamento original (dado via -s) quanto de eventuais réplicas que venham a ser produzidas. 
+     Segue o mesmo formato aceito no programa IQTREE; matriz de substituição e demais parâmetros separados por '+'.
 
-	ex: `HKY+G6+I`
+     ex: `HKY+G6+I`
 
-	[Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio
-		JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos.
+          [Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio
+          JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos.
 				(ver http://www.iqtree.org/doc/Substitution-Models#dna-models para mais detalhes)
 
-	[Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
-		G[n] - variação restrita a categorias de uma distribuição gama, com parâmetro alfa estimado por máxima verossimilhança (ou fixo em caso de otimização parcial) e beta = alfa)
-		R[n] - variação restrita a categorias de uma distribuição livre, com média e probabilidade de cada categoria estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
+     [Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
+          G[n] - variação restrita a categorias de uma distribuição gama, com parâmetro alfa estimado por máxima verossimilhança (ou fixo em caso de otimização parcial) e beta = alfa)
+          R[n] - variação restrita a categorias de uma distribuição livre, com média e probabilidade de cada categoria estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
 
-		Em ambos os casos, 'n' é opcional e define o número de categorias da distribuição. Se 'G' ou 'R' for referido sem qualquer dígito, o número de categorias seguira um default de 4.
+          Em ambos os casos, 'n' é opcional e define o número de categorias da distribuição. Se 'G' ou 'R' for referido sem qualquer dígito, o número de categorias seguira um default de 4.
 
-	[Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
-		I - categoria única de sítios invariáveis
+     [Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
+          I - categoria única de sítios invariáveis
 
-	**Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendado aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
+     **Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendado aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
 
 `-z` (obrigatório; sem default):
-	Especifica o arquivo contendo o grupo de árvores filogenéticas a ser testado.
-	Neste aquivo, cada árvore deve estar em formato newick (i.e. parentético) e cada árvore deve ocupar exclusivamente uma linha.
+     Especifica o arquivo contendo o grupo de árvores filogenéticas a ser testado.
+     Neste aquivo, cada árvore deve estar em formato newick (i.e. parentético) e cada árvore deve ocupar exclusivamente uma linha.
 
 
 `-n` (default `1000`)
-	Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolver procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
+     Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolver procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
 		
 
 `-t` (default `BP:0/KH:0/SH:0`)
-	Especifica os tipos de testes desejados, separados por barra (/), e os parâmetros procedimentais, combinados aos respectivos testes por dois pontos (:). 
-	Se desejar repetir um tipo de teste via diferentes procedimentos numa só execução do programa, os parâmetros procedimentais vão separados entre si por vírgulas (,).
+     Especifica os tipos de testes desejados, separados por barra (/), e os parâmetros procedimentais, combinados aos respectivos testes por dois pontos (:). 
+     Se desejar repetir um tipo de teste via diferentes procedimentos numa só execução do programa, os parâmetros procedimentais vão separados entre si por vírgulas (,).
 		
 		ex: `-t AU:1,2,3,4/BP:3,4/KH:-3`
 
@@ -121,14 +121,14 @@ Os formatos suportados, sintaxe e parâmetros disponíveis seguem:
 
 
 `-nc` (default `2`)
-	Especifica o número de núcleos de processamento a ser utilizado sempre que o IQTREE é utilizado.
+     Especifica o número de núcleos de processamento a ser utilizado sempre que o IQTREE é utilizado.
 
 
 `-redo` (default TRUE)
-	Define se todas as análises para otimização de parâmetros e cálculo de verossimilhança devem ser repetidas ou se resultados anteriores devem ser reaproveitados. Com `-redo FALSE`, arquivos de saída do IQTREE gerado pelo phyTest anteriormente podem ser reaproveitados.
+     Define se todas as análises para otimização de parâmetros e cálculo de verossimilhança devem ser repetidas ou se resultados anteriores devem ser reaproveitados. Com `-redo FALSE`, arquivos de saída do IQTREE gerado pelo phyTest anteriormente podem ser reaproveitados.
 
-	**Atenção**: se o grupo de árvores dado em `-t` for modificado entre uma e outra corrida do phyTest, garanta que `-redo TRUE` ou que o diretório de trabalho não contenha arquivos de saída relativos a análises anteriores.
+     **Atenção**: se o grupo de árvores dado em `-t` for modificado entre uma e outra corrida do phyTest, garanta que `-redo TRUE` ou que o diretório de trabalho não contenha arquivos de saída relativos a análises anteriores.
 
 
 `-verb` (default `FALSE`)
-	Modo "verbose". Com `-verb TRUE`, o programa se torna falador, dando entrando em detalhes mais específicos de cada passo percorrido.
+     Modo "verbose". Com `-verb TRUE`, o programa se torna falador, dando entrando em detalhes mais específicos de cada passo percorrido.
