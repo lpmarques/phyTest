@@ -42,22 +42,22 @@ Segue o mesmo formato aceito no programa IQTREE; matriz de substituição e dema
 ex: `HKY+G6+I`
 
 
-[Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio:
+* [Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio:
 
-JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos.
+  * JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos.
 
 (ver http://www.iqtree.org/doc/Substitution-Models#dna-models para mais detalhes)
 
 
-[Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
-* G[n] - variação restrita a categorias de uma distribuição gama, com parâmetro alfa estimado por máxima verossimilhança (ou fixo em caso de otimização parcial) e beta = alfa)
-* R[n] - variação restrita a categorias de uma distribuição livre, com média e probabilidade de cada categoria estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
+* [Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
+  * G[n] - variação restrita a categorias de uma distribuição gama, com parâmetro alfa estimado por máxima verossimilhança (ou fixo em caso de otimização parcial) e beta = alfa)
+  * R[n] - variação restrita a categorias de uma distribuição livre, com média e probabilidade de cada categoria estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
 
 Em ambos os casos, 'n' é opcional e define o número de categorias da distribuição. Se 'G' ou 'R' for referido sem qualquer dígito, o número de categorias seguira um default de 4.
 
 
-[Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
-* I - categoria única de sítios invariáveis
+* [Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
+  * I - categoria única de sítios invariáveis
 
 **Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendável aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
 
