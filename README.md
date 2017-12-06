@@ -2,9 +2,9 @@
 
 ## Descrição
 
-Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.5) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
+Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do(s) modelo(s) evolutivo(s) (i.e. árvores filogenéticas) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.5) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest recruta os programas IQTREE e Seq-Gen externamente.
 
-A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e de procedimentos que disponibiliza para a realização de cada um. Com o software em mãos, o usuário terá mais liberdade para ponderar a confiança em suas filogenias diante de diferentes aproximações estatísticas e níveis de otimização de parâmetros. O programa também foi arquitetado visando maximizar o aproveitamento de memória RAM, para possibilitar que testes complexos (envolvendo grande número de réplicas) tornem-se acessíveis para hardware simples.
+A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e de procedimentos que disponibiliza para a realização de cada um. Com o phyTest, o usuário terá mais liberdade para considerar o efeito de diferentes aproximações estatísticas sobre os valores de confiança estimados para suas hipóteses evolutivas. O programa também foi arquitetado visando máximo aproveitamento da memória RAM, possibilitando que testes complexos (envolvendo grande número de réplicas) sejam acessíveis para hardware simples.
 
 
 ## Configurações de uso
@@ -59,7 +59,7 @@ Em ambos os casos, 'n' é opcional e define o número de categorias da distribui
 [Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
 * I - categoria única de sítios invariáveis
 
-**Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendado aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
+**Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendável aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
 
 
 
@@ -72,7 +72,7 @@ Neste aquivo, cada árvore deve estar em formato newick (i.e. parentético) e ca
 
 `-n` (default `1000`)
 
-Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolver procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
+Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolverem procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
 
 
 
@@ -137,18 +137,18 @@ Parâmetros procedimentais:
 
 `-nc` (default `2`)
 
-Especifica o número de núcleos de processamento a ser utilizado sempre que o IQTREE é utilizado.
+Especifica o número de núcleos de processamento a ser utilizado sempre que o IQTREE é recrutado.
 
 
 
 `-redo` (default TRUE)
 
-Define se todas as análises para otimização de parâmetros e cálculo de verossimilhança devem ser repetidas ou se resultados anteriores devem ser reaproveitados. Com `-redo FALSE`, arquivos de saída do IQTREE gerado pelo phyTest anteriormente podem ser reaproveitados.
+Define se todas as análises para otimização de parâmetros e cálculo de verossimilhança devem ser repetidas ou se resultados anteriores devem ser reaproveitados. Com `-redo FALSE`, arquivos de saída do IQTREE - gerados por outras corridas do phyTest podem ser reaproveitados.
 
-**Atenção**: se o grupo de árvores dado em `-t` for modificado entre uma e outra corrida do phyTest, garanta que `-redo TRUE` ou que o diretório de trabalho não contenha arquivos de saída relativos a análises anteriores.
+**Atenção**: se o grupo de árvores dado em `-t` for modificado entre uma e outra corrida do phyTest, garanta que `-redo TRUE` ou que o diretório de trabalho não contenha arquivos de saída referentes a análises anteriores.
 
 
 
 `-verb` (default `FALSE`)
 
-Modo "verbose". Com `-verb TRUE`, o programa se torna falador, dando entrando em detalhes mais específicos de cada passo percorrido.
+Modo "verbose". Com `-verb TRUE`, o programa se torna falador, entrando em detalhes mais específicos de cada passo percorrido.
