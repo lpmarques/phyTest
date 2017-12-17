@@ -4,7 +4,7 @@
 
 Title: phyTest
 
-Version: 0.5.0 (alpha)
+Version: 0.6 (alpha)
 
 Author: Lucas Marques
 
@@ -14,7 +14,6 @@ use strict;
 use warnings;
 use List::Util "sum";
 use List::MoreUtils "uniq";
-#use Math::Gauss; # subrotinas inclusas embaixo para o caso do pacote não estar instalado
 
 
 # ==================== INICIO DO PROGRAMA ==================== #
@@ -151,7 +150,7 @@ if($gama && $free){
 	die "Cannot use '+G' and '+R' simultaniously as passed in '$submodel'.\nPlease, reset the model argument (-m) and try again.\n";
 }
 elsif($free && exists($ts{SOWH})){
-	die "Due to limitations in Seq-Gen program, freely distributed rate categories (+R) - as passed in '$submodel' - are not a valid parameter for SOWH's sequence simulations.\nPlease, reset the model (-m) or required tests (-t) and try again.\n";
+	die "Due to limitations in Seq-Gen program, freely distributed rate categories (+R) - as passed in '$submodel' - can not be used in SOWH's sequence simulations.\nPlease, reset the model (-m) or required tests (-t) and try again.\n";
 }
 
 
@@ -182,21 +181,23 @@ if(exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4})){
 			}
 		}
 	}
-	elsif($line1 =~ /^>\w+/){ #se for fasta...
+	elsif($line1 =~ /^>(\w+)/){ #se for fasta...
 		print "\tFasta format detected\n";
-		seek(IN,-length($line1),1);
+		my $header = $1;
+		my @seq;
 		while(<IN>){
 			if(/^>(\w+)/){
-				$header = $1;
-			}
-			elsif(/([\w\?\*-]+)/){
-				my @seq = split("",$1);
 				$data{$header} = [@seq];
+				$header = $1;
+				undef @seq;
+			}
+			elsif(/([A-Z\?\*-]+)/i){
+				push(@seq,split("",$1));
 			}
 		}
 	}
 	else{ #se não for nenhum dos dois...
-		die "Failed to recognize sequence alignment.\nPlease, make sure it is in supported format (either sequential fasta or sequential phylip).\n";
+		die "Failed to recognize sequence alignment.\nPlease, make sure it is in supported format (either fasta or sequential phylip).\n";
 	}
 	$nsites = scalar(@{$data{$header}});
 	print "\t$nsites sites long\n";
@@ -266,14 +267,14 @@ else{
 		}
 	}
 	if(scalar(@trees)==1 || (exists($opt{d}) && scalar(keys(%{$opt{d}}))==1)){
-	 	if(scalar(keys(%ps))>2 || (!exists($ps{3}) && !exists($ps{4}))){
-			die "\nNot enough trees to proceed: using the tests and/or procedures passed via (-t), at least 2 reasonable and topologically unique trees must be provided to achieve minimal precision in confidence calculation.\n";
-		}
-		elsif(scalar(@trees)==1){
+		if(scalar(@trees)==1){
 			open OUT, ">t1.tre";
 			print OUT $trees[0];
 			close OUT;
 			$opt{d}{t1}{tree} = $trees[0];
+		}
+	 	if(scalar(keys(%ps))>2 || (scalar(keys(%ps))==2 && !exists($ps{3}) && !exists($ps{4})) || (scalar(keys(%ps))==1 && !exists($ps{3}) || !exists($ps{4}))){
+			die "\nNot enough trees to proceed: using the tests and/or procedures passed via (-t), at least 2 reasonable and topologically unique trees must be provided to achieve minimal precision in confidence calculation.\n";
 		}
 	}	
 }
@@ -288,7 +289,7 @@ my $dmlt;
 foreach my $t(sort(keys(%{$opt{d}}))){ # para cada árvore $_...
 	print "\n\t$t ";
 	#via iqtree, otimiza seus comprimentos de ramo e parametros de substituição para o alinhamento dado
-	-f "${t}_${data_name}.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for sequence alignment '$seqs'.\n" : system "iqtree-omp -s $seqs -te ${t}.tre -m $submodel -pre ${t}_${data_name} -nt 2 -wsl -quiet $redo";
+	-f "${t}_${data_name}.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for sequence alignment '$seqs'.\n" : system "iqtree-omp -s $seqs -te ${t}.tre -m $submodel -pre ${t}_${data_name} -nt $ncores -wsl -quiet $redo";
 
 	#rearmazena árvore com comprimentos de ramo otimizados
 	open IN, "<${t}_${data_name}.treefile" or die "Failed to open '${t}_${data_name}.treefile': $!";
@@ -309,6 +310,9 @@ foreach my $t(sort(keys(%{$opt{d}}))){ # para cada árvore $_...
 			if(/[ACTG]-[ACTG]: (\d\.\d+)/){
 				push(@rates,$1);
 			}
+			elsif(/equal frequencies/){
+				@freqs = (0.25) x 4;
+			}
 			elsif(/pi\([ACTG]\) = (\d\.\d+)/){
 				push(@freqs,$1);
 			}
@@ -321,8 +325,8 @@ foreach my $t(sort(keys(%{$opt{d}}))){ # para cada árvore $_...
 			}
 			elsif(/Site proportion and rates:\h+(.+)/){
 				my $temp = $1;
-				$temp =~ s/[\(\)]//;
-				$temp =~ s/,/ /;
+				$temp =~ s/[\(\)]//g;
+				$temp =~ s/,/ /g;
 				my @spr = split(" ",$temp);
 				$opt{d}{$t}{spr} = join(",",multiround([@spr],3));
 				last;
@@ -332,23 +336,22 @@ foreach my $t(sort(keys(%{$opt{d}}))){ # para cada árvore $_...
 		if(exists($ps{-1})||exists($ps{1})||exists($ps{3})){ # se realizar otimização parcial...
 			#armazena rates no formato utilizado no iqtree
 			$opt{d}{$t}{iqrate} = join(",",uniq(grep($_!=1,@rates)));
+			$opt{d}{$t}{iqfreq} = join(",",@freqs);
 		}
 		if(exists($ps{-2})||exists($ps{-1})){ # se realizar bootstrap paramétrico...
 			#armazena rates no formato para restrição do modelo GTR no seq-gen
-			$opt{d}{$t}{sgrate} = join(",",@rates);
+			$opt{d}{$t}{sgrate} = join(" ",@rates);
+			$opt{d}{$t}{sgfreq} = join(" ",@freqs);
 		}
-		$opt{d}{$t}{freq} = join(",",@freqs);
 		
 	}
 
 	#armazena valor de log-verossimilhança total da árvore e suas log-verossimilhanças por sítio
 	open IN, "<${t}_${data_name}.sitelh" or die "Failed to open '${t}_${data_name}.sitelh': $!";
-	while(my $line = <IN>){
-		if($line =~ /^Site_Lh\h+(.+)/){
-			$opt{d}{$t}{slik} = [split(/\h/,$1)];
-			$opt{d}{$t}{lik} = round(sum(@{$opt{d}{$t}{slik}}),4);
-			last;
-		}
+	seek(IN,length(<IN>),0);
+	if(<IN> =~ /^Site_Lh\h+(.+)/){
+		$opt{d}{$t}{slik} = [split(/\h/,$1)];
+		$opt{d}{$t}{lik} = round(sum(@{$opt{d}{$t}{slik}}),4);
 	}
 	print "lnL = $opt{d}{$t}{lik}";
 	# identifica árvore de maior log-verossimilhança para os dados ($dmlt)
@@ -428,7 +431,7 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 
 							#RELL
 							if($_ == 0){
-								print "\tResampling estimated log-likelihoods (RELL) for each tree: replicate $r (".$nsites*$sf[$k]." sites long)\n" if $t eq "t1" && $verb;
+								print "\tResampling estimated log-likelihoods (RELL) for each tree: replicate $r (".$nsites*$sf[$k]." sites long)\n" if $verb && $t eq "t1";
 								#reamostra os valores de verossimilhanças por sítio para cada árvore e armazena os totais resultantes
 								$opt{r}{$t}{lik} = round(sum(@{$opt{d}{$t}{slik}}[@posits]),4);
 
@@ -438,21 +441,19 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 
 								# utiliza o alinhamento-réplica para otimizar os parâmetros de cada árvore
 								if($_ == 1){ # com otimização parcial (apenas comprimentos de ramos)...
-									print "\tOptimizing trees using replicate $r (".$nsites*$sf[$k]." sites long)\n" if $t eq "t1" && $verb;
-									-f "${t}_${data_name}_NPboot${r}_Popt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -te ${t}.tre -m $matrix'{'$opt{d}{$t}{iqrate}'}'$inv'{'$opt{d}{$t}{pinv}'}'$gama'{'$opt{d}{$t}{alpha}'}'$free'{'$opt{d}{$t}{spr}'}'+F'{'$opt{d}{$t}{freq}'}' -pre ${t}_${data_name}_NPboot${r}_Popt -nt 2 -wsl -quiet $redo";
+									print "\tOptimizing trees using replicate $r (".$nsites*$sf[$k]." sites long)\n" if $verb && $t eq "t1";
+									-f "${t}_${data_name}_NPboot${r}_Popt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -te ${t}.tre -m $matrix'{'$opt{d}{$t}{iqrate}'}'$inv'{'$opt{d}{$t}{pinv}'}'$gama'{'$opt{d}{$t}{alpha}'}'$free'{'$opt{d}{$t}{spr}'}'+F'{'$opt{d}{$t}{iqfreq}'}' -pre ${t}_${data_name}_NPboot${r}_Popt -nt $ncores -wsl -quiet $redo";
 									open IN, "<${t}_${data_name}_NPboot${r}_Popt.sitelh" or die "Failed to open '${t}_${data_name}_NPboot${r}_Popt.sitelh': $!";
 								}
 								else{ # ou completa (ramos + parametros de susbtituição)
-									print "\tOptimizing trees and substitution parameters using replicate $r (".$nsites*$sf[$k]." sites long)\n" if $t eq "t1" && $verb;
-									-f "${t}_${data_name}_NPboot${r}_Copt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -te ${t}.tre -m ${matrix}${inv}${gama}${free}${Coptfreq} -pre ${t}_${data_name}_NPboot${r}_Copt -nt 2 -wsl -quiet $redo";
+									print "\tOptimizing trees and substitution parameters using replicate $r (".$nsites*$sf[$k]." sites long)\n" if $verb && $t eq "t1";
+									-f "${t}_${data_name}_NPboot${r}_Copt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -te ${t}.tre -m ${matrix}${inv}${gama}${free}${Coptfreq} -pre ${t}_${data_name}_NPboot${r}_Copt -nt $ncores -wsl -quiet $redo";
 									open IN, "<${t}_${data_name}_NPboot${r}_Copt.sitelh" or die "Failed to open '${t}_${data_name}_NPboot${r}_Copt.sitelh': $!";
 								}
 								# e armazena sua verossimilhança
-								while(my $line = <IN>){
-									if($line =~ /^Site_Lh\h+(.+)/){
-										$opt{r}{$t}{lik} = round(sum(split(/\h/,$1)),4);
-										last;
-									}
+								seek(IN,length(<IN>),0);
+								if(<IN> =~ /^Site_Lh\h+(.+)/){
+									$opt{r}{$t}{lik} = round(sum(split(/\h/,$1)),4);
 								}
 								close IN;
 
@@ -468,15 +469,15 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 					else{ # se o procedimento envolver busca pela árvore ML,
 						# utiliza o alinhamento-réplica para inferí-la
 						if($_ == 3){ # com otimização parcial (apenas topologia + comprimentos de ramos)
-							print "\tSearching ML tree for replicate $r (".$nsites*$sf[$k]." sites long)\n" && $verb;
-							-f "MLt_${data_name}_NPboot${r}_TrSch_Popt.sitelh" && !$redo ? warn "\tReusing previously computed maximum likelihood for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -m $matrix'{'$opt{d}{$dmlt}{iqrate}'}'$inv'{'$opt{d}{$dmlt}{pinv}'}'$gama'{'$opt{d}{$dmlt}{alpha}'}'$free'{'$opt{d}{$dmlt}{spr}'}'+F'{'$opt{d}{$_}{freq}'}' -pre MLt_${data_name}_NPboot${r}_TrSch_Popt -nt 2 -wsl -quiet $redo";
+							print "\tSearching ML tree for replicate $r (".$nsites*$sf[$k]." sites long)\n" if $verb;
+							-f "MLt_${data_name}_NPboot${r}_TrSch_Popt.sitelh" && !$redo ? warn "\tReusing previously computed maximum likelihood for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -m $matrix'{'$opt{d}{$dmlt}{iqrate}'}'$inv'{'$opt{d}{$dmlt}{pinv}'}'$gama'{'$opt{d}{$dmlt}{alpha}'}'$free'{'$opt{d}{$dmlt}{spr}'}'+F'{'$opt{d}{$_}{freq}'}' -pre MLt_${data_name}_NPboot${r}_TrSch_Popt -nt $ncores -wsl -quiet $redo";
 							open IN, "<MLt_${data_name}_NPboot${r}_TrSch_Popt.treefile" or die "Failed to open 'MLT_${data_name}_NPboot${r}_TrSch_Popt.sitelh': $!";
 							$rmlt = <IN>;
 							close IN;
 						}
 						elsif($_ == 4){ # ou completa (topologia + ramos + parametros de substituição)
-							print "\tSearching ML tree and substitution parameters for replicate $r (".$nsites*$sf[$k]." sites long)\n" && $verb;
-							-f "MLt_${data_name}_NPboot${r}_TrSch_Copt.sitelh" && !$redo ? warn "\tReusing previously computed maximum likelihood for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -m ${matrix}${inv}${gama}${free}${Coptfreq} -pre MLt_${data_name}_NPboot${r}_TrSch_Copt -nt 2 -wsl -quiet $redo";
+							print "\tSearching ML tree and substitution parameters for replicate $r (".$nsites*$sf[$k]." sites long)\n" if $verb;
+							-f "MLt_${data_name}_NPboot${r}_TrSch_Copt.sitelh" && !$redo ? warn "\tReusing previously computed maximum likelihood for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}_NPboot${r}.fas -m ${matrix}${inv}${gama}${free}${Coptfreq} -pre MLt_${data_name}_NPboot${r}_TrSch_Copt -nt $ncores -wsl -quiet $redo";
 							open IN, "<MLt_${data_name}_NPboot${r}_TrSch_Copt.treefile" or die "Failed to open 'MLT_${data_name}_NPboot${r}_TrSch_Copt.sitelh': $!";
 							$rmlt = <IN>;
 							close IN;
@@ -531,13 +532,13 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 				if($sf[$k] == 1){
 					if(exists($ps{$_}{BP})){ # se foi requisitado BP
 
-						print "\tComputing confidence of each tree via BP:$_\n" if $t eq "t1" && $verb;
+						print "\tComputing confidence on each tree via BP:$_\n" if $verb && $t eq "t1";
 						$pvs{$t}{BP}{$_}{pval} = $pvs{$t}{BP}{$_}{$k}/$nreps;
 
 					}
 					if(exists($ps{$_}{KH})){ # se foi requisitado KH
 
-						print "\tComputing confidence of each tree via KH:$_\n" if $t eq "t1" && $verb;
+						print "\tComputing confidence on each tree via KH:$_\n" if $verb && $t eq "t1";
 						$pvs{$t}{KH}{$_}{pval} = 0 if !exists($pvs{$t}{KH}{$_}{pval});
 						my $rdelta_mean = round((sum(@{$pvs{$t}{KH}{$_}{rdeltas}})/$nreps),4);
 						for(my $r=1; $r<=$nreps; $r++){ # para cada réplica $r...
@@ -558,7 +559,7 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 					}
 					if(exists($ps{$_}{ELW})){ # se foi requisitado ELW
 
-						print "\tComputing confidence of each tree via ELW:$_\n" if $t eq "t1" && $verb;
+						print "\tComputing confidence on each tree via ELW:$_\n" if $verb && $t eq "t1";
 						$pvs{$t}{ELW}{$_}{pval} = round($pvs{$t}{ELW}{$_}{weightsum}/$nreps,4);
 						delete $pvs{$t}{ELW}{$_}{weightsum};
 
@@ -606,7 +607,7 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 						}
 					}
 				}
-				print "\tComputing confidence of each tree via SH:$_\n" if $verb;
+				print "\tComputing confidence on each tree via SH:$_\n" if $verb;
 				foreach my $t(keys(%{$opt{d}})){
 					$pvs{$t}{SH}{$_}{pval} = round($pvs{$t}{SH}{$_}{pval}/$nreps,4);
 					delete $pvs{$t}{SH}{$_}{likmean};
@@ -622,7 +623,7 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 	if(exists($ts{AU})){
 
 		foreach(@procs){
-			print "\tComputing confidence of each tree via AU:$_\n" if $verb;
+			print "\tComputing confidence on each tree via AU:$_\n" if $verb;
 			foreach my $t (sort(keys(%{$opt{d}}))){
 				if($pvs{$t}{AU}{$_}{kn} >= 2){
 					my $denom = ($pvs{$t}{AU}{$_}{wab}**2)-($pvs{$t}{AU}{$_}{waa}*$pvs{$t}{AU}{$_}{wbb});
@@ -663,8 +664,8 @@ if(exists($ps{-1})||exists($ps{-2})){ # se envolver(em) geração de réplicas p
 
 	my @procs = grep(/-(1|2)/,keys(%ps));
 	# converte número de categorias gama para o formato do seq-gen
-	my $gcat;
-	if(defined($gama)){
+	my $gcat = "";
+	if($gama){
 		if($gama =~ /\+G(\d+)/){
 			$gcat = "-g $1";
 		}
@@ -675,74 +676,71 @@ if(exists($ps{-1})||exists($ps{-2})){ # se envolver(em) geração de réplicas p
 
 	foreach my $truet (keys(%{$opt{d}})){ # para cada árvore $truet
 
-		if($truet != $dmlt){ # que não for a de ML para o alinhamento original,
+		# converte alpha e proporção de sítios invariáveis
+		my $alph = "";
+		if($gama){
+			$alph = "-a $opt{d}{$truet}{alpha}";
+		}
+		my $pinv = "";
+		if($inv){
+			$pinv = "-i $opt{d}{$truet}{pinv}";
+		}
+		# e simula N alinhamentos utilizando a árvore $truet, sendo N = número de réplicas dado em $nreps
+		print "\nUsing $truet to simulate $nreps parametric replicates with ".$nsites." sites each\n";
+		print "seq-gen -m GTR -l $nsites -n $nreps $gcat $alph $pinv -f $opt{d}{$truet}{sgfreq} -r $opt{d}{$truet}{sgrate} -or -q < ${truet}.tre > ${data_name}-${truet}_Pboots.data\n";
+		system "seq-gen -m GTR -l $nsites -n $nreps $gcat $alph $pinv -f $opt{d}{$truet}{sgfreq} -r $opt{d}{$truet}{sgrate} -or -q < ${truet}.tre > ${data_name}-${truet}_Pboots.data";	
+		open IN, "<${data_name}-${truet}_Pboots.data" or die "Failed to open '${data_name}-${truet}_Pboots.data': $!";
+		local $/ = "\n ";
+		my $r;	
+		while(<IN> =~ /(\d+\h\d+\n(\w+\h[ACGT]+\n)+)/){ # para cada alinhamento gerado...
+			$r++;
 
-			# converte alpha e proporção de sítios invariáveis
-			my $alph;
-			if(defined($gama)){
-				$alph = "-a $opt{d}{$truet}{alpha}";
-			}
-			my $pinv;
-			if(defined($inv)){
-				$pinv = "-i $opt{d}{$truet}{pinv}";
-			}
+			# cria arquivo separado o contendo
+			open OUT, ">${data_name}-${truet}_Pboot${r}.phy";
+			print OUT $1;
+			close OUT;
+			foreach(@procs){ # para cada procedimento $_...
 
-			# e simula N alinhamentos utilizando a árvore $truet, sendo N = número de réplicas dado em $nreps
-			print "\nUsing $truet to simulate $nreps parametric replicates with ".$nsites." sites each and reoptimizing the other trees...\n";
-			system "seq-gen -m GTR -l $nsites -n $nreps $gcat $alph $pinv -f $opt{d}{$truet}{freq} -r $opt{d}{$truet}{sgrate} -or < ${truet}.tre > ${data_name}-${truet}_Pboots.data";	
-			open IN, "<${data_name}-${truet}_Pboots.data" or die "Failed to open '${data_name}-${truet}_Pboots.data': $!";
-			local $/ = "\n ";
-			my $r;	
-			while(<IN> =~ /\d+\h\d+\n(\w+\h[ACGT]+\n)+/){ # para cada alinhamento gerado...
-				$r++;
+				my $rmlt;
+				foreach my $t(keys(%{$opt{d}})){ # e, para cada árvore, utiliza o alinhamento simulado para otimização
 
-				# cria arquivo separado o contendo
-				open OUT, ">${data_name}-${truet}_Pboot${r}.phy";
-				print OUT;
-				close OUT;
-				foreach(@procs){ # para cada procedimento $_...
-
-					my $rmlt;
-					foreach my $t(keys(%{$opt{d}})){ # e, para cada árvore, utiliza o alinhamento simulado para otimização
-
-						if($_ == -1){	# parcial (apenas dos comprimentos de ramos, fixando os mesmos parâmetros de substituição utilizados para a simulação dos dados)
-							-f "${t}_${data_name}-${truet}_Pboot${r}_Popt.sitelh.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}-${truet}_Pboot${r}.phy -te ${t}.tre -m $matrix'{'$opt{d}{$truet}{iqrate}'}'$inv'{'$opt{d}{$truet}{pinv}'}'$gama'{'$opt{d}{$truet}{alpha}'}'+F'{'$opt{d}{$truet}{freq}'}' -pre ${t}_${data_name}-${truet}_Pboot${r}_Popt -nt 2 -wsl -quiet $redo";
-							open IN2, "<${t}_${data_name}-${truet}_Pboot${r}_Popt.sitelh" or die "Failed to open '${t}_${data_name}-${truet}_Pboot${r}_Popt.sitelh': $!";
-						}
-						elsif($_ == -2){	# ou completa (ramos + parametros de susbtituição)
-							-f "${t}_${data_name}-${truet}_Pboot${r}_Copt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r'.\n" : system "iqtree-omp -s ${data_name}-${truet}_Pboot${r}.phy -te ${t}.tre -m ${matrix}${inv}${gama}${Coptfreq} -pre ${t}_${data_name}-${truet}_Pboot${r}_Copt -nt 2 -wsl -quiet $redo";
-							open IN2, "<${t}_${data_name}-${truet}_Pboot${r}_Copt.sitelh" or die "Failed to open '${t}_${data_name}-${truet}_Pboot${r}_Copt.sitelh': $!";
-						}
-						#calcula verossimilhança de 
-						while(<IN2>){
-							if(/^Site_Lh\h+(.+)/){
-								$opt{r}{$t}{lik} = round(sum(split(/\h/,$1)),4);
-								last;
-							}
-						}
-						close IN2;
-						if(!defined($rmlt) || $opt{0-$_}{$rmlt}{lik} < $opt{r}{$t}{lik}){
-							$rmlt = $t;
-						}
-
+					if($_ == -1){	# parcial (apenas dos comprimentos de ramos, fixando os mesmos parâmetros de substituição utilizados para a simulação dos dados)
+						print "\tOptimizing trees using replicate $r (true tree: $truet)\n" if $verb && $t eq "t1";
+						-f "${t}_${data_name}-${truet}_Pboot${r}_Popt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r' simulated under '$truet'.\n" : system "iqtree-omp -s ${data_name}-${truet}_Pboot${r}.phy -te ${t}.tre -m $matrix'{'$opt{d}{$truet}{iqrate}'}'$inv'{'$opt{d}{$truet}{pinv}'}'$gama'{'$opt{d}{$truet}{alpha}'}'+F'{'$opt{d}{$truet}{iqfreq}'}' -pre ${t}_${data_name}-${truet}_Pboot${r}_Popt -nt $ncores -wsl -quiet $redo";
+						open IN2, "<${t}_${data_name}-${truet}_Pboot${r}_Popt.sitelh" or die "Failed to open '${t}_${data_name}-${truet}_Pboot${r}_Popt.sitelh': $!";
 					}
-
-					$pvs{$truet}{SOWH}{$_}{pval} = 0 if !exists($pvs{$truet}{SOWH}{$_}{pval});
-					if($opt{d}{$truet}{lik}{delta}<$opt{r}{$rmlt}{lik}-$opt{r}{$truet}{lik}){ # se o delta entre e a árvore de ML para $r e $truet superar o delta original...
-						$pvs{$truet}{SOWH}{$_}{pval}++; # adiciona à contagem de vezes em que o delta original foi superado
+					else{	# ou completa (ramos + parametros de susbtituição)
+						print "\tOptimizing trees and substitution parameters using replicate $r (true tree: $truet)\n" if $verb && $t eq "t1";
+						-f "${t}_${data_name}-${truet}_Pboot${r}_Copt.sitelh" && !$redo ? warn "\tReusing previously computed likelihood of '$t' for a replicate '$r' simulated under '$truet'.\n" : system "iqtree-omp -s ${data_name}-${truet}_Pboot${r}.phy -te ${t}.tre -m ${matrix}${inv}${gama}${Coptfreq} -pre ${t}_${data_name}-${truet}_Pboot${r}_Copt -nt $ncores -wsl -quiet $redo";
+						open IN2, "<${t}_${data_name}-${truet}_Pboot${r}_Copt.sitelh" or die "Failed to open '${t}_${data_name}-${truet}_Pboot${r}_Copt.sitelh': $!";
+					}
+					# obtém verossimilhança resultante
+					#seek(IN2,length(<IN2>),0);
+					#print <IN2>."\n";
+					if(<IN2> =~ /Site_Lh\h+(.+)/){
+						$opt{r}{$t}{lik} = round(sum(split(/\h/,$1)),4);
+					}
+					close IN2;
+					# e define a árvore de maior verossimilhança
+					if(!defined($rmlt) || $opt{r}{$rmlt}{lik} < $opt{r}{$t}{lik}){
+						$rmlt = $t;
 					}
 
 				}
+				$pvs{$truet}{SOWH}{$_}{pval} = 0 if !exists($pvs{$truet}{SOWH}{$_}{pval});
+				if($opt{d}{$truet}{delta}<=($opt{r}{$rmlt}{lik}-$opt{r}{$truet}{lik})){ # se o delta entre e a árvore de ML para $r e $truet superar o delta original...
+					$pvs{$truet}{SOWH}{$_}{pval}++; # adiciona à contagem de vezes em que o delta original foi superado
+				}
 
 			}
-			close IN;
 
-			#terminadas todas as réplicas paramétricas, calcula o pvalue de $truet
-			print "\tComputing confidence of each tree via SOWH:$_\n";
-			foreach(@procs){ # novamente, para cada procedimento $_...
-				$pvs{$truet}{SOWH}{$_}{pval} = $pvs{$truet}{SOWH}{$_}{pval}/$nreps;
-			}
+		}
+		close IN;
 
+		#terminadas todas as réplicas paramétricas, calcula o pvalue de $truet
+		foreach(@procs){ # novamente, para cada procedimento $_...
+			print "\tComputing confidence on $truet via SOWH:$_\n" if $verb;
+			$pvs{$truet}{SOWH}{$_}{pval} = $pvs{$truet}{SOWH}{$_}{pval}/$nreps;
 		}
 
 	}
@@ -751,7 +749,7 @@ if(exists($ps{-1})||exists($ps{-2})){ # se envolver(em) geração de réplicas p
 delete $opt{r};
 if(exists($ps{-3})){ # se envolver(em) presunção de normalidade de delta...
 
-	print "\tComputing confidence of each tree via KH:-3\n";
+	print "\tComputing confidence on each tree via KH:-3\n";
 	foreach my $t(keys(%{$opt{d}})){ # para cada árvore $t...
 
 		# armazena vetor de deltas por sítio,

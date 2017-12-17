@@ -1,8 +1,8 @@
-# phyTest (versão 0.5 - alpha)
+# phyTest (versão 0.6 - alpha)
 
 ## Descrição
 
-Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.5) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
+Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.6) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
 
 A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e de procedimentos que disponibiliza para a realização de cada um. Com o software em mãos, o usuário terá mais liberdade para ponderar a confiança em suas filogenias diante de diferentes aproximações estatísticas e níveis de otimização de parâmetros. O programa também foi arquitetado visando maximizar o aproveitamento de memória RAM, para possibilitar que testes complexos (envolvendo grande número de réplicas) tornem-se acessíveis para hardware simples.
 
@@ -141,7 +141,7 @@ Especifica o número de núcleos de processamento a ser utilizado sempre que o I
 
 
 
-`-redo` (default TRUE)
+`-redo` (default `TRUE`)
 
 Define se todas as análises para otimização de parâmetros e cálculo de verossimilhança devem ser repetidas ou se resultados anteriores devem ser reaproveitados. Com `-redo FALSE`, arquivos de saída do IQTREE gerado pelo phyTest anteriormente podem ser reaproveitados.
 
