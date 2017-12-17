@@ -4,7 +4,7 @@
 
 Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.6) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
 
-A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e de procedimentos que disponibiliza para a realização de cada um. Com o software em mãos, o usuário terá mais liberdade para ponderar a confiança em suas filogenias diante de diferentes aproximações estatísticas e níveis de otimização de parâmetros. O programa também foi arquitetado visando maximizar o aproveitamento de memória RAM, para possibilitar que testes complexos (envolvendo grande número de réplicas) tornem-se acessíveis para hardware simples.
+A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e de procedimentos que disponibiliza para a realização de cada um. Com o phyTest, o usuário terá mais liberdade para considerar o efeito de diferentes aproximações estatísticas sobre os valores de confiança estimados para suas hipóteses evolutivas. O programa também foi arquitetado visando máximo aproveitamento da memória RAM, possibilitando que testes complexos (envolvendo grande número de réplicas) sejam acessíveis para hardware simples.
 
 
 ## Configurações de uso
@@ -42,24 +42,24 @@ Segue o mesmo formato aceito no programa IQTREE; matriz de substituição e dema
 ex: `HKY+G6+I`
 
 
-[Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio:
+* [Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio:
 
-JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos.
+  * JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos.
 
 (ver http://www.iqtree.org/doc/Substitution-Models#dna-models para mais detalhes)
 
 
-[Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
-* G[n] - variação restrita a categorias de uma distribuição gama, com parâmetro alfa estimado por máxima verossimilhança (ou fixo em caso de otimização parcial) e beta = alfa)
-* R[n] - variação restrita a categorias de uma distribuição livre, com média e probabilidade de cada categoria estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
+* [Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
+  * G[n] - variação restrita a categorias de uma distribuição gama, com parâmetro alfa estimado por máxima verossimilhança (ou fixo em caso de otimização parcial) e beta = alfa)
+  * R[n] - variação restrita a categorias de uma distribuição livre, com média e probabilidade de cada categoria estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
 
 Em ambos os casos, 'n' é opcional e define o número de categorias da distribuição. Se 'G' ou 'R' for referido sem qualquer dígito, o número de categorias seguira um default de 4.
 
 
-[Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
-* I - categoria única de sítios invariáveis
+* [Sítios invariáveis] - admite uma proporção de sítios invariáveis (com taxa de substituição de nucleotídeos = 0); é estimada por máxima verossimilhança (ou fixa em caso de otimização parcial)
+  * I - categoria única de sítios invariáveis
 
-**Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendado aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
+**Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendável aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
 
 
 
@@ -72,7 +72,7 @@ Neste aquivo, cada árvore deve estar em formato newick (i.e. parentético) e ca
 
 `-n` (default `1000`)
 
-Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolver procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
+Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolverem procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
 
 
 
@@ -151,4 +151,4 @@ Define se todas as análises para otimização de parâmetros e cálculo de vero
 
 `-verb` (default `FALSE`)
 
-Modo "verbose". Com `-verb TRUE`, o programa se torna falador, dando entrando em detalhes mais específicos de cada passo percorrido.
+Modo "verbose". Com `-verb TRUE`, o programa se torna falador, entrando em detalhes mais específicos de cada passo percorrido.
