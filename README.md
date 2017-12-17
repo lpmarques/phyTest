@@ -152,3 +152,4 @@ Define se todas as análises para otimização de parâmetros e cálculo de vero
 `-verb` (default `FALSE`)
 
 Modo "verbose". Com `-verb TRUE`, o programa se torna falador, entrando em detalhes mais específicos de cada passo percorrido.
+
