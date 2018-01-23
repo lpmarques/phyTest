@@ -6,7 +6,7 @@ Este programa é capaz de realizar uma gama de testes topológicos, visando a se
 
 O phyTest (v. 0.7) implementa os testes KH, SH, SOWH, ELW, BP e AU e possibilita sua realização por uma variedade de procedimentos, como o bootstrap paramétrico, não-paramétrico, RELL ou aproximação normal. O phyTest não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Na necessidade destes procedimentos, recruta os programas IQTREE e Seq-Gen automaticamente.
 
-Dada a variedade de combinações possíveis entre testes e procedimentos implementados, com o phyTest o usuário terá mais liberdade para considerar o efeito de diferentes aproximações estatísticas sobre o cálculo da confiança (p-valor) de suas hipóteses evolutivas.
+Dada a variedade de combinações possíveis entre testes e procedimentos implementados, com o phyTest o usuário terá mais liberdade para avaliar o efeito de diferentes abordagens estatísticas sobre o cálculo da confiança (p-valor) de suas hipóteses evolutivas.
 
 
 ## Configurações de uso
@@ -18,7 +18,7 @@ Para rodar o programa chame:
 perl phyTest.pl -s <arquivo_com_alinhamento> -m <modelo_de_substituição> -z <arquivo_com_filogenias> -n <número_de_réplicas> -t <testes_desejados>
 ```
 
-Os formatos suportados, sintaxe e parâmetros disponíveis seguem:
+Os formatos aceitos, sintaxe e parâmetros disponíveis seguem:
 ```
 -s arquivo_com_alinhamento.[fasta|phy]
 -m modelo_de_substituição [MODELO+I+(Gn|+Rn)]
@@ -88,7 +88,7 @@ Tipos de testes:
 * [ELW] - Expected Likelihood Weights (Strimmer & Rambaut, 2001) 
 * [AU] - Approximatelly Unbiased (Shimodaira, 2002)
  
-Parâmetros procedimentais:
+Procedimentos:
 * [-3] - aproximação normal
 * [-2] - bootstrap paramétrico (simulações) com otimização completa
 * [-1] - bootstrap paramétrico com otimização parcial (default para o SOWH)
