@@ -4,7 +4,7 @@
 
 Title: phyTest
 
-Version: 0.6 (alpha)
+Version: 0.7 (alpha)
 
 Author: Lucas Marques
 
@@ -15,8 +15,523 @@ use warnings;
 use List::Util "sum";
 use List::MoreUtils "uniq";
 
+# ====================== Math::Gauss ====================== #
+# A SINTAXE DAS FUNÇÕES FOI MODIFICADA PARA POUPAR ESPAÇO
+sub pdf {
+ 	my $x = shift if @_;
+ 	my $m = @_ ? shift : 0;
+ 	my $s = @_ ? shift : 1;
+	die("Can't evaluate Math::Gauss:pdf for \$s=$s not strictly positive") if $s <= 0;
+ 	my $z = ($x-$m)/$s;
+ 	return exp(-0.5*$z*$z)/(2.506628274631*$s);
+}
 
-# ==================== INICIO DO PROGRAMA ==================== #
+sub cdf {
+ 	my $x = shift if @_;
+ 	my $m = @_ ? shift : 0;
+ 	my $s = @_ ? shift : 1;
+ 	die( "Can't evaluate Math::Gauss:cdf for \$s=$s not strictly positive") if $s <= 0;
+ 	my $z = ($x-$m)/$s;
+ 	my $t = 1.0/(1.0 + 0.2316419*abs($z));
+ 	my $y = $t*(0.319381530
+	    + $t*(-0.356563782
+		  + $t*(1.781477937
+			+ $t*(-1.821255978
+				+ $t*1.330274429))));
+ 	return $z > 0 ? 1.0-pdf($z)*$y : pdf($z)*$y;
+}
+
+sub inv_cdf { # MODIFICADA PARA RETORNAR QUANTIL TAMBÉM PARA NORMAIS NÃO-PADRÃO, PORÉM DESVIA DO QNORM DO R - RECOMENDADO ARREDONDAMENTO DO QUANTIL ATÉ SEGUNDA CASA
+ 	my $p = shift if @_;
+ 	my $m = @_ ? shift : 0;
+ 	my $s = @_ ? shift : 1;
+ 	die("Can't evaluate Math::Gauss::inv_cdf for \$p=$p outside ]0,1[") if $p<=0.0 || $p>=1.0;
+ 	my $t;
+ 	$t = $p<0.5 ? sqrt(-2.0*log($p)) : sqrt(-2.0*log(1.0-$p));
+ 	my $y = (2.515517 + $t*(0.802853 + $t*0.010328));
+ 	$y /= 1.0 + $t*(1.432788 + $t*(0.189269 + $t*0.001308));
+ 	my $z;
+ 	$z = $p<0.5 ? $y-$t : $t-$y;
+ 	return ($z*$s)+$m;
+}
+# ============================================================ #
+
+# =================== ROUNDING SUBROUTINES =================== #
+sub round { #arredondamento (5 to up) para um float
+	my $float = shift @_;
+	my $place_lim = @_ ? shift : 3;
+	return $float if int($float)-$float == 0;
+	my @sides = split(/\./,$float);
+	return $sides[0] if !defined($sides[1]);
+	my @temp = split(/e/,$sides[1]);
+	my $note = "";
+	if(defined($temp[1])){
+		if($temp[1] > 0){
+			return $float;
+		}
+		elsif(0-$temp[1] < $place_lim){
+			return 0;
+		}
+		else{
+			$note = "e".$temp[1];	
+		}
+	}
+	return $float if $place_lim >= length($temp[0]);
+	my @places = split("",$temp[0]);
+	for(my $p=$place_lim;$p<scalar(@places);$p++){
+		return (($sides[0].".".join("",@places[0..$place_lim-1]))+(1/(10**$place_lim))).$note if $places[$p]>4;
+		return $sides[0].".".join("",@places[0..$place_lim-1]).$note if $places[$p]<4;
+	}
+	return $sides[0].".".join("",@places[0..$place_lim-1]).$note;
+}
+
+sub multiround { #arredondamento (5 to up) para múltiplos floats
+	my @rounded;
+	my $place_lim = defined($_[1]) ? pop : 3;
+	foreach(@{$_[0]}){
+		do {(push(@rounded,$_));last} if int($_)-$_ == 0;
+		my @sides = split(/\./,$_);
+		do {(push(@rounded,$_));last} if !defined($sides[1]);
+		my @temp = split(/e/,$sides[1]);
+		my $note = "";
+		if(defined($temp[1])){
+			if($temp[1] > 0){
+				push(@rounded,$_);
+			}
+			elsif(0-$temp[1] < $place_lim){
+				push(@rounded,0);
+			}
+			else{
+				$note = "e".$temp[1];	
+			}
+		}
+		do {(push(@rounded,$_));last} if $place_lim >= length($temp[0]);
+		my @places = split("",$temp[0]);
+		for(my $p=$place_lim;$p<scalar(@places);$p++){
+			do {push(@rounded,(($sides[0].".".join("",@places[0..$place_lim-1]))+(1/(10**$place_lim))).$note);last} if $places[$p]>4;
+			do {push(@rounded,($sides[0].".".join("",@places[0..$place_lim-1])).$note);last} if $places[$p]<4 || ($p+1)==scalar(@places);
+		}
+	}
+	return @rounded;
+}
+# ============================================================ #
+
+# ================== TOPOLOGIC SUBROUTINES =================== #
+sub unroot { ## Desenraiza árvore em formato newick!
+  chomp($_[0]);
+  my $t = $_[0];
+  substr($t,0,1) = "";
+  substr($t,-2,1) = "";
+  my $sep = "";
+  $t =~ /\:/ ? $sep = ":" : $t =~ s/(\w+|\))/$1:/g;
+  my @tree = split(":",$t);
+  my (@subtrees,@edges,$st);
+  my $o = 0;
+  for(my $i=0; $i<scalar(@tree)-1; $i++){
+    $st .= "$tree[$i]$sep";
+    if($tree[$i] =~ /(\(+)/){
+      $o += length($1);
+    }
+    elsif($tree[$i] =~ /\)+/){
+      $o--;
+    }
+    if($o==0){
+      $st =~ s/:$//;
+      push(@subtrees,$st);
+      my @node = split(/,|;/,$tree[$i+1]);
+      push(@edges,$node[0]);
+      $tree[$i+1] = $node[1] if defined($node[1]);
+      $st = undef;
+    }
+  }
+  if(scalar(@subtrees)==2){
+    for(my $i=0;$i<=1;$i++){
+      if($subtrees[$i] =~ /\(.+\)/){
+        $subtrees[$i] = substr($subtrees[$i],1,length($subtrees[$i])-2);
+        do {my $newedge = $edges[0]+$edges[1];$subtrees[$i-1] .= "$sep$newedge"} if $sep eq ":";
+        return("(".join(",",@subtrees).");");
+      }
+    }
+  }
+  elsif(scalar(@subtrees)>2){
+    return($_[0]);
+  }
+  else{
+    die("Tree '$_[0]' is malformed; unable to unroot it.\n");
+  }
+}
+
+sub phyDist{ ## Dá a distância topológica entre duas árvores newick não enraizadas, pela métrica de partição (sensível apenas a topologia) ou BSD (sensível também a comprimentos de ramo)
+	my $lensense = scalar(@_)==3 ? pop : 0; ## 0 - Partition Metric (Penny & Hendy, 1985) =default= | 1 - Branch Score Distance (Kuhner & Felsenstein, 1994)
+	my %phys;
+	my $i;
+	foreach my $t(@_){
+		$i++;
+		chomp($t);
+		my $bl = 0;
+		$t =~ /\:/ ? $bl = 1 : $t =~ s/(\w+|\))/$1:/g;
+		die("Trees '$_[0]' and '$_[1]' are not comparable: BSD metric not valid for lengthless trees (try default option 0 - Penny & Handy's Partition Metric)") if $bl==0 && $lensense==1;
+		my @tree = split(":",$t);
+		my ($c,$cc) = 0;
+		my (@taxa,@term_bls,@clades,@int_bls,@ocs);
+		foreach my $slice(@tree){
+			if($slice =~ /(\d\.?\d*)?(\))?,?(\(+)?(\w+)?/){
+				if(defined($1)){
+					!defined($cc) || $cc == $ocs[-1] ? push(@term_bls,$1) : do {$int_bls[$cc] = $1;$cc = $ocs[-1]};
+				}
+				if(defined($4)){
+					push(@taxa,$4);
+					do {$cc = $c+length($3)-1;push(@ocs,($c..$cc));@clades[$c..$cc] = [()];$c+=length($3)} if defined($3);
+					foreach(@ocs){
+						push(@{$clades[$_]},$4);
+					}
+				}
+				elsif(defined($2)){
+					pop(@ocs);
+					$clades[$cc] = join(",",sort(@{$clades[$cc]}));
+					$cc = $ocs[-1] if $bl == 0;
+				}
+			}		
+		}
+		shift(@clades);
+		shift(@int_bls);
+		for(my $j=0;$j<scalar(@taxa);$j++){
+			$phys{$i}{$taxa[$j]} = shift @term_bls;
+		}
+		for(my $j=0;$j<scalar(@clades);$j++){
+			$phys{$i}{$clades[$j]} = shift @int_bls;
+		}
+	}
+	my $PD = 0;
+	my @t = (1,2);
+	for(my $i=0; $i<2; $i++){
+		foreach(keys(%{$phys{$t[$i]}})){
+			if(exists($phys{$t[$i-1]}{$_})){
+				do {$PD += ($phys{$t[$i]}{$_}-$phys{$t[$i-1]}{$_})**2;$phys{$t[$i]}{$_} = 0;$phys{$t[$i-1]}{$_} = 0} if $lensense == 1;
+			}
+			else{
+				die("Trees '$_[0]' and '$_[1]' are not comparable: different sets of taxa.\n") if $_ !~ /,/;
+				$PD += $lensense == 1 ? $phys{$t[$i]}{$_}**2 : 1;
+			}
+		}
+	}
+	return($PD);
+}
+# ============================================================ #
+
+
+# ====================== AU SUBROUTINES ====================== #
+#getAUpv($t,\@sf,\@npv,$nreps);
+sub getAUpv{
+	my $tree = shift; # tree id
+	my @rr = @{shift(@_)}; # vector of rescaling rates (== scale factor)
+	my @X = @{shift(@_)}; # matrix of predictors for least squares fit
+	my @npv = @{shift(@_)}; # vector of naive pvalues (BP)
+	my $bb = shift; # n of replicates
+
+	# rcalpcal #	
+	my $i;
+	my $kk = scalar(@rr); # n of scale factors
+	for($i=0;$i<$kk;$i++){
+		last if $rr[$i] >= 0;
+	}
+	my $i1 = $i;
+	for(;$i<$kk;$i++){
+		last if $rr[$i] >= 1;
+	}
+	my $i2 = $i;
+	
+	my $deg; # degeneration switch (j in consel.c)
+	my $kappa = 1; # curvature weight
+	my ($D,$C,$rss,$se,$pv);
+	my ($df,@zval,@wt,@vmat,$pf); # degrees of freedom, vector of response, vector of weights (for weighted least squares) and... pfit(?)
+
+	for($i=$i1;$i<$i2;$i++){
+		# wlscalcpval #
+		my $j;
+		my $m = my $m2 = 0;
+		for($j=0;$j<$kk;$j++){
+			if($rr[$j]<$rr[$i] || $rr[$j]>100){
+				$zval[$j] = $wt[$j] = 0;
+			}
+			elsif($npv[$j]>=1 || $npv[$j]<=0){
+				$zval[$j] = $wt[$j] = 0;
+				$m2++;
+			}
+			else{
+				$zval[$j] = -inv_cdf($npv[$j]);
+				$wt[$j] = $bb*pdf($zval[$j])**2/((1-$npv[$j])*$npv[$j]);
+				$m++;
+			}
+		}
+		$df = $m-2;
+		my $x = 0;
+		if($m>=2){
+			my @fit = lsfit(\@X,\@zval,\@wt,\@vmat); # returns vector containing $D, $C and $rss
+			$D = shift(@fit);
+			$C = shift(@fit);
+			$rss = shift(@fit);
+			$pv = cdf(-($D-$kappa*$C));
+			$x = pdf($D-$kappa*$C);
+			$se = sqrt($x**2*($vmat[0][0]+$kappa**2*$vmat[1][1]-$kappa*$vmat[0][1]-$kappa*$vmat[1][0]));
+			$deg = 0;
+		}
+		else{
+			for($j=0;$j<$kk;$j++){
+				$x += $zval[$j];
+			}
+			$pv = ($x>=0) ? 0 : 1;
+			$D = $C = $rss = $se = 0;
+			$deg = 1;
+		}
+
+		##########
+		last if $deg;
+		$pf = pochisq($rss,$df);
+		last if $pf>=0;
+	}
+	#########
+
+	if($deg){
+		my $pf = 0;
+		warn("Regression degenerated for $tree: df=$df\n"); # df = negative integer
+		$D = $C = 0;
+	}
+	else{
+		if($pf < 0.01){
+			warn("Theory does not fit well for $tree: pfit=$pf\n");
+		}
+	}
+
+	return($pv);
+
+}
+
+#lsfit(\@X,\@zval,\@wt,\@vmat);
+sub lsfit{
+	my @X = @{shift(@_)}; # matrix of predictors (m x n)
+	my @Y = @{shift(@_)}; # vector of response
+	my @W = @{shift(@_)}; # vector of weights
+	my $vmat = pop(@_);
+
+	my $m = scalar(@X);
+	my $n = scalar(@{$X[0]});
+
+	my ($i,$j,$k,$x);
+
+	#printvec(\@W);
+
+	my (@covmat,@xyvec,@invmat);
+	$covmat[0] = [(0,0)]; $covmat[1] = [(0,0)];
+	for($i=0;$i<$m;$i++){
+		for($x=0,$k=0;$k<$n;$k++){
+			$x += $X[$i][$k]*$Y[$k]*$W[$k];
+		}
+		$xyvec[$i] = $x;
+		for($j=0;$j<=$i;$j++){
+			for($x=0,$k=0;$k<$n;$k++){
+				$x += $X[$i][$k]*$X[$j][$k]*$W[$k];
+			}
+			$covmat[$j][$i] = $covmat[$i][$j] = $x;
+		}
+	}
+
+	#printmat(\@covmat);
+
+	@invmat = luinverse(\@covmat);
+	#printmat(\@invmat);
+	my $sad = sym_mat(\@invmat);
+	#printmat(\@invmat);
+	warn "lsfit: covariance matrix singularity is $sad" if $sad > 1e-5;
+	warn "lsfit: COVARIANCE MATRIX IS SINGULAR" if $sad > 1e-3;
+	@{$vmat} = @invmat;
+
+	my @beta = (0,0); # vector for D and C
+	for($i=0;$i<$m;$i++){
+		for($x=0,$j=0;$j<$m;$j++){
+			$x += $invmat[$i][$j]*$xyvec[$j];
+		}
+		$beta[$i] = $x;
+	}
+
+	my $rss = 0;
+	my $z;
+	for($x=0,$k=0;$k<$n;$k++){
+		$z = $X[0][$k]*$beta[0] + $X[1][$k]*$beta[1];
+		$rss += $W[$k]*($Y[$k]-$z)**2;
+	}
+
+	return (@beta,$rss);
+}
+
+sub luinverse{
+	my $orimat = shift(@_);
+	my $size = scalar(@$orimat);
+
+	my ($i,$j,$k,$maxb);
+	my @wk;
+
+	for($i=0; $i<$size; $i++){
+		$maxb = 0;
+		for($j=0; $j<$size; $j++){
+			$maxb = abs($$orimat[$i][$j]) if abs($$orimat[$i][$j])>$maxb;
+		}
+		die "luinverse: singular matrix" if $maxb == 0;
+		$wk[$i] = 1/$maxb;
+	}
+
+	my @index;
+	my $sum;
+	for($j=0; $j<$size; $j++){
+		for($i=0; $i<$j; $i++){
+			$sum = $$orimat[$i][$j];
+			for($k=0; $k<$i; $k++){
+				$sum -= $$orimat[$i][$k]*$$orimat[$k][$j];
+			}
+			$$orimat[$i][$j] = $sum;
+		}
+		$maxb = 0;
+		my $maxi = 0;
+		my $tmp;
+		for($i=$j; $i<$size; $i++){
+			$sum = $$orimat[$i][$j];
+			for ($k=0; $k<$j; $k++){
+				$sum -= $$orimat[$i][$k]*$$orimat[$k][$j];	
+			}
+			$$orimat[$i][$j] = $sum;
+			$tmp = $wk[$i]*abs($sum);
+			if ($tmp >= $maxb){
+				$maxb = $tmp;
+				$maxi = $i;
+			}
+		}
+		if($j != $maxi){
+			for ($k=0; $k<$size; $k++){
+				$tmp = $$orimat[$maxi][$k];
+				$$orimat[$maxi][$k] = $$orimat[$j][$k];
+				$$orimat[$j][$k] = $tmp;
+			}
+			$wk[$maxi] = $wk[$j];
+		}
+		$index[$j] = $maxi;
+		$$orimat[$j][$j] = 1e-20 if $$orimat[$j][$j] == 0;
+		if($j != $size-1){
+			$tmp = 1/$$orimat[$j][$j];
+			for($i=$j+1; $i<$size; $i++){
+				$$orimat[$i][$j] *= $tmp;
+			}
+		}
+	}
+
+	my @invmat = ([()],[()]);
+	for(my $jx=0; $jx<$size; $jx++){
+		my $ix;
+		for($ix=0; $ix<$size; $ix++){
+			$wk[$ix] = 0;
+		}
+		$wk[$jx] = 1.0;
+		my $l = -1;
+		for($i=0; $i<$size; $i++){
+			my $idx = $index[$i];
+			$sum = $wk[$idx];
+			$wk[$idx] = $wk[$i];
+			if($l != -1){
+				for($j=$l; $j<$i; $j++){
+					$sum -= $$orimat[$i][$j]*$wk[$j];
+				}
+			} 
+			elsif($sum != 0){
+				$l = $i;
+			}
+			$wk[$i] = $sum;
+		}
+		for($i=$size-1; $i>=0; $i--){
+			$sum = $wk[$i];
+			for ($j=$i+1; $j<$size; $j++){
+				$sum -= $$orimat[$i][$j]*$wk[$j];
+			}
+			$wk[$i] = $sum/$$orimat[$i][$i];
+		}
+		for($ix=0; $ix<$size; $ix++){
+			$invmat[$ix][$jx] = $wk[$ix];
+		}
+	}
+
+	return(@invmat);
+}
+
+sub sym_mat{
+	my $mat = shift(@_);
+	my $m = scalar(@{$mat});
+
+	my ($i,$j);
+	my $sum = 0;
+	for($i=0; $i<$m; $i++){
+		for($j=0; $j<$i; $j++){
+			$sum += abs($$mat[$i][$j]-$$mat[$j][$i]);
+			$$mat[$i][$j] = $$mat[$j][$i] = ($$mat[$i][$j]+$$mat[$j][$i])/2;
+		}
+	}
+
+	return $sum;
+}
+
+sub pochisq{
+	my $x = shift; # chi-square value
+	my $df = shift; # degrees of freedom
+
+	my $LOG_SQRT_PI = 0.5723649429247000870717135;
+	my $I_SQRT_PI = 0.5641895835477562869480795;
+	
+	return 1 if($x<=0 || $df<1);
+	my $a = 0.5*$x;
+	my $even = ($df%2 == 0) ? 1 : 0;
+	my $y = cexp(-$a) if $df > 1;
+	my $s = ($even ? $y : (2*ccdf(-sqrt($x))));
+
+	if($df>2){
+		my $x = 0.5*($df-1);
+		my $z = ($even ? 1 : 0.5);
+		if($a > 20){
+			my $e = $even ? 0 : $LOG_SQRT_PI;
+			my $c = log($a); 
+			for(;$z<=$x;$z++){
+				$e = log($z)+$e;
+				$s += cexp($c*$z-$a-$e);
+			}
+			return $s;
+		}
+		else{
+			my $e = $even ? 1 : ($I_SQRT_PI/sqrt($a));
+			my $c = 0;
+			for(;$z<=$x;$z++){
+				$e = $e*($a/$z);
+				$c = $c+$e;
+			}
+			return ($c*$y+$s);
+		}
+	}
+	else{
+		return $s;
+	}
+
+}
+
+#my $BIGX = 20;
+#my $Z_MAX = 6;
+sub cexp{ # conditional exp: returns 0 if x < -20 
+	my $x = shift;
+	($x < -20) ? return 0 : return exp($x);
+}
+
+sub ccdf{ # conditional cdf: returns 0 if abs(x) > 6 
+	my $x = shift;
+	(abs($x) > 6) ? return 0 : return cdf($x);
+}
+
+# ============================================================ #
+
+# ================== BEGIN OF MAIN PROGRAM =================== #
 
 #recebe argumentos e identifica, pelos flags, os nomes de arquivos e configurações necessárias aos testes
 my $seqs;
@@ -232,7 +747,7 @@ my $id;
 while(<IN>){
 	if(/[\(\)\w\.,:]+;/){
 		$id++;
-		print "\tt${id} = $_\n";
+		#print "\tt${id} = $_\n";
 		push(@trees,unroot($_));
 	}
 }
@@ -280,9 +795,6 @@ else{
 }
 undef @trees;
 
-#foreach(2..5,7..10,12..15){
-#	delete $opt{d}{"t$_"};
-#}
 
 #dado o alinhamento original, utiliza o iqtree para otimizar os comprimentos de ramo, além dos parâmetros de substituição para cada árvore e os armazena junto a suas verossimilhanças em %opt
 my $dmlt;
@@ -361,7 +873,7 @@ foreach my $t(sort(keys(%{$opt{d}}))){ # para cada árvore $_...
 	close IN;
 
 }
-print "\n\tHighest-scoring tree: $dmlt (when performing KH, SH or SOWH test, the remaining trees are compared against this)\n";
+print "\n\tHighest-scoring tree: $dmlt (when performing KH, SH or SOWH test, the remaining trees are compared against this)\n\n";
 if(exists($ts{KH})||exists($ts{SH})||exists($ts{SOWH})){ # se for realizado qualquer teste baseado em delta de verossimilhança...
 	# armazena diferenças de log-verossimilhaca entre a $dmlt e demais árvores
 	foreach my $t(keys(%{$opt{d}})){
@@ -386,25 +898,13 @@ if(exists($ps{-2})||exists($ps{2})|exists($ps{4})){ # se for realizar qualquer t
 my %pvs;
 if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4})){ # se o(s) teste(s) envolver(em) geração de réplicas não-paramétricas...
 
-	my @procs = grep($_>=0,keys(%ps));
+	my @procs = grep($_>=0,keys(%ps)); # lista de procedimentos
 	# define uma lista de fatores de escala, para caso venha a ser realizado o teste AU, ou apenas um fator redundante (1), caso não
-	my @sf; # fatores de escala
-	my @rsf; # raiz quadrada dos fatores de escala
-	my @inv_rsf; # inverso da raiz dos fatores de escala
-	if(exists($ts{AU})){ 
-		@sf = (0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4);
-		foreach(@sf){
-			my $rf = sqrt($_);
-			push(@rsf,$rf);
-			push(@inv_rsf,(1/$rf));
-		}
-	}
-	else{
-		@sf = (1);
-	}
+	my @sf = exists($ts{AU}) ? (0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4) : (1);
+
 	for(my $k=0; $k<scalar(@sf); $k++){ # para cada fator de escala...
 
-		print "\nGenerating $nreps non-parametric replicates with ".int($nsites*$sf[$k])." sites each and executing any required optimization...\n";
+		print "Generating $nreps non-parametric replicates with ".int($nsites*$sf[$k])." sites each and executing any required optimization...\n\n";
 		for(my $r=1; $r<=$nreps; $r++){ # dada cada réplica $r...
 
 			#sorteia, com reposição, as posições a serem amostradas para compor a réplica $r, totalizando N' posições = N posições do alinhamento original ($nsites) X o fator de escala ($sf[$k])
@@ -525,11 +1025,12 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 
 		}
 		# terminadas todas as réplicas do fator $k, calcula pvalues (de BP, KH, SH e ELW apenas)
-		foreach(@procs){ # novamente, para cada procedimento $_...
+		if($sf[$k] == 1){
+			
+			foreach(@procs){ # novamente, para cada procedimento $_...
 
-			foreach my $t(keys(%{$opt{d}})){ # e para cada árvore $t...
+				foreach my $t(keys(%{$opt{d}})){ # e para cada árvore $t...
 
-				if($sf[$k] == 1){
 					if(exists($ps{$_}{BP})){ # se foi requisitado BP
 
 						print "\tComputing confidence on each tree via BP:$_\n" if $verb && $t eq "t1";
@@ -565,53 +1066,31 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 
 					}
 				}
-				if(exists($ps{$_}{AU})){ # se foi requisitado AU sob o procedimento
-
-					my $bp = $pvs{$t}{BP}{$_}{$k}/$nreps;
-					my ($cq,$w);
-					$pvs{$t}{AU}{$_}{kn} = 0 if !exists($pvs{$t}{AU}{$_}{kn});
-					if($bp == 0 || $bp == 1){
-						$cq = $w = 0;
-					}else{
-						$cq = inv_cdf(1-$bp); # quantil do complemento do BP
-						$w = ((pdf($cq)**2)*$nreps)/($bp*(1-$bp)); #least-squares weight						
-						$pvs{$t}{AU}{$_}{kn}++;
-					}
-					my $wa = $w*$rsf[$k];
-					my $wb = $w*$inv_rsf[$k];
-					exists($pvs{$t}{AU}{$_}{wab}) ? $pvs{$t}{AU}{$_}{wab} += $wa*$inv_rsf[$k] : $pvs{$t}{AU}{$_}{wab} = $wa*$inv_rsf[$k];
-					exists($pvs{$t}{AU}{$_}{wbc}) ? $pvs{$t}{AU}{$_}{wbc} += $wb*$cq : $pvs{$t}{AU}{$_}{wbc} = $wb*$cq;
-					exists($pvs{$t}{AU}{$_}{wac}) ? $pvs{$t}{AU}{$_}{wac} += $wa*$cq : $pvs{$t}{AU}{$_}{wac} = $wa*$cq;
-					exists($pvs{$t}{AU}{$_}{waa}) ? $pvs{$t}{AU}{$_}{waa} += $wa*$rsf[$k] : $pvs{$t}{AU}{$_}{waa} = $wa*$rsf[$k];
-					exists($pvs{$t}{AU}{$_}{wbb}) ? $pvs{$t}{AU}{$_}{wbb} += $wb*$inv_rsf[$k] : $pvs{$t}{AU}{$_}{wbb} = $wb*$inv_rsf[$k];
-					#delete $pvs{$t}{BP}{$_}{$k};
-
-				}
-
-			}
-			# terminadas todas as árvores
-			if($sf[$k] == 1 && exists($ps{$_}{SH})){ # se foi requisitado SH
-				
-				for(my $r=1; $r<=$nreps; $r++){ # para cada réplica $r...
-					my $rmlt;
-					foreach my $t(keys(%{$opt{d}})){ # e para cada árvore $t...
-						$pvs{$t}{SH}{$_}{rliks}[$r] -= $pvs{$t}{SH}{$_}{likmean}; # executa o procedimento de centralização de lnLs
-						# seleciona a árvore que obtém maior lnL centralizado para a réplica
-						if(!defined($rmlt) || $pvs{$rmlt}{SH}{$_}{rliks}[$r] < $pvs{$t}{SH}{$_}{rliks}[$r]){
-							$rmlt = $t;
+				# terminadas todas as árvores
+				if(exists($ps{$_}{SH})){ # se foi requisitado SH
+					
+					for(my $r=1; $r<=$nreps; $r++){ # para cada réplica $r...
+						my $rmlt;
+						foreach my $t(keys(%{$opt{d}})){ # e para cada árvore $t...
+							$pvs{$t}{SH}{$_}{rliks}[$r] -= $pvs{$t}{SH}{$_}{likmean}; # executa o procedimento de centralização de lnLs
+							# seleciona a árvore que obtém maior lnL centralizado para a réplica
+							if(!defined($rmlt) || $pvs{$rmlt}{SH}{$_}{rliks}[$r] < $pvs{$t}{SH}{$_}{rliks}[$r]){
+								$rmlt = $t;
+							}
+						}
+						foreach my $t(keys(%{$opt{d}})){ # para cada árvore, novamente...
+							if($opt{d}{$t}{delta}<=($pvs{$rmlt}{SH}{$_}{rliks}[$r]-$pvs{$t}{SH}{$_}{rliks}[$r])){ # se o delta entre e a árvore de ML para $r e $t superar o delta original...
+								$pvs{$t}{SH}{$_}{pval}++; # adiciona à contagem de vezes em que o delta original foi superado
+							}
 						}
 					}
-					foreach my $t(keys(%{$opt{d}})){ # para cada árvore, novamente...
-						if($opt{d}{$t}{delta}<=($pvs{$rmlt}{SH}{$_}{rliks}[$r]-$pvs{$t}{SH}{$_}{rliks}[$r])){ # se o delta entre e a árvore de ML para $r e $t superar o delta original...
-							$pvs{$t}{SH}{$_}{pval}++; # adiciona à contagem de vezes em que o delta original foi superado
-						}
+					print "\tComputing confidence on each tree via SH:$_\n" if $verb;
+					foreach my $t(keys(%{$opt{d}})){
+						$pvs{$t}{SH}{$_}{pval} = round($pvs{$t}{SH}{$_}{pval}/$nreps,4);
+						delete $pvs{$t}{SH}{$_}{likmean};
+						delete $pvs{$t}{SH}{$_}{rliks};
 					}
-				}
-				print "\tComputing confidence on each tree via SH:$_\n" if $verb;
-				foreach my $t(keys(%{$opt{d}})){
-					$pvs{$t}{SH}{$_}{pval} = round($pvs{$t}{SH}{$_}{pval}/$nreps,4);
-					delete $pvs{$t}{SH}{$_}{likmean};
-					delete $pvs{$t}{SH}{$_}{rliks};
+
 				}
 
 			}
@@ -622,36 +1101,29 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 	#terminados todos os fatores de escala, calcula pvalue do AU
 	if(exists($ts{AU})){
 
+		my $i=0;
+		my @X = ([()],[()]);
+		foreach(@sf){
+			$X[0][$i] = sqrt($sf[$i]); # vector of rooted rescaling rates
+			$X[1][$i] = 1/$X[0][$i]; # vector of inverse of rooted rescaling rates
+			$i++;
+		}
+
 		foreach(@procs){
 			print "\tComputing confidence on each tree via AU:$_\n" if $verb;
+
 			foreach my $t (sort(keys(%{$opt{d}}))){
-				if($pvs{$t}{AU}{$_}{kn} >= 2){
-					my $denom = ($pvs{$t}{AU}{$_}{wab}**2)-($pvs{$t}{AU}{$_}{waa}*$pvs{$t}{AU}{$_}{wbb});
-					#$pvs{$t}{AU}{$_}{se} = 0;
-					if($denom == 0){
-						delete $pvs{$t}{AU}{$_};
-						$pvs{$t}{AU}{$_}{pval} = 0;
-					}else{
-						my $D = (($pvs{$t}{AU}{$_}{wab}*$pvs{$t}{AU}{$_}{wbc})-($pvs{$t}{AU}{$_}{wbb}*$pvs{$t}{AU}{$_}{wac}))/$denom;
-						my $C = (($pvs{$t}{AU}{$_}{wab}*$pvs{$t}{AU}{$_}{wac})-($pvs{$t}{AU}{$_}{waa}*$pvs{$t}{AU}{$_}{wbc}))/$denom;
-						my $std_err = -($pvs{$t}{AU}{$_}{waa}+$pvs{$t}{AU}{$_}{wbb}+(2*$pvs{$t}{AU}{$_}{wab}))/$denom;
-						delete $pvs{$t}{AU}{$_};
-						$pvs{$t}{AU}{$_}{pval} = 1-cdf($D-$C);
-						#$pvs{$t}{AU}{$_}{se} = pdf($D-$C)*sqrt($std_err);
-					}
-					#IMPLEMENTAR cálculo e teste de significância da sum of square differences (RSS) - se for muito alta, AU não deve ser utilizado (Shimodaira, 2002)
-					# cálculo do RSS segue: sum_k( $w[$k] * ( ($D*$rsf[$k] + $C*$inv_rsf[$k]) - $cq[$k] )**2 )
-				}else{
-					$pvs{$t}{AU}{$_}{pval} = 0.77;
-=cut
-					my $cq_sum = 0;
-					for(my $k=0;$k<scalar(@sf);$k++){
-						my $bp = $pvs{$t}{BP}{$_}{$k}/$nreps;
-						$cq_sum += ($bp == 0 || $bp == 1) ? 0 : inv_cdf(1-$bp);
-					}
-					$pvs{$t}{AU}{$_}{pval} = ($cq_sum >= 0) ? 0 : 1;
-=cut
+
+				my @npv;
+				my $kk = scalar(@sf);
+				for(my $k=0;$k<$kk;$k++){
+					my $naive_pv = $pvs{$t}{BP}{$_}{$k}/$nreps;
+					$npv[$k] = $naive_pv;
+					delete($pvs{$t}{BP}{$_}{$k});
 				}
+
+				$pvs{$t}{AU}{$_}{pval} = getAUpv($t,\@sf,\@X,\@npv,$nreps);
+
 				delete $pvs{$t}{BP}{$_} if !exists($ps{$_}{BP});
 				delete $pvs{$t}{BP} if !exists($ts{BP});
 			}
@@ -661,6 +1133,7 @@ if(exists($ps{0})||exists($ps{1})||exists($ps{2})||exists($ps{3})||exists($ps{4}
 
 }
 if(exists($ps{-1})||exists($ps{-2})){ # se envolver(em) geração de réplicas paramétricas...
+	$nreps /= 10; # DELETE ME LATER !!!!!!!!!!!!!!!!
 
 	my @procs = grep(/-(1|2)/,keys(%ps));
 	# converte número de categorias gama para o formato do seq-gen
@@ -687,7 +1160,6 @@ if(exists($ps{-1})||exists($ps{-2})){ # se envolver(em) geração de réplicas p
 		}
 		# e simula N alinhamentos utilizando a árvore $truet, sendo N = número de réplicas dado em $nreps
 		print "\nUsing $truet to simulate $nreps parametric replicates with ".$nsites." sites each\n";
-		print "seq-gen -m GTR -l $nsites -n $nreps $gcat $alph $pinv -f $opt{d}{$truet}{sgfreq} -r $opt{d}{$truet}{sgrate} -or -q < ${truet}.tre > ${data_name}-${truet}_Pboots.data\n";
 		system "seq-gen -m GTR -l $nsites -n $nreps $gcat $alph $pinv -f $opt{d}{$truet}{sgfreq} -r $opt{d}{$truet}{sgrate} -or -q < ${truet}.tre > ${data_name}-${truet}_Pboots.data";	
 		open IN, "<${data_name}-${truet}_Pboots.data" or die "Failed to open '${data_name}-${truet}_Pboots.data': $!";
 		local $/ = "\n ";
@@ -777,207 +1249,27 @@ if(exists($ps{-3})){ # se envolver(em) presunção de normalidade de delta...
 
 
 #imprime tabela com a log-verossimilhança, o delta em relação à maior verossimilhança e o p-value de cada árvore pelos diferentes testes requisitados
-print "\ntree_id\tlnL";
-print "\tdelta" if exists($ts{KH}) || exists($ts{SH}) || exists($ts{SOWH});
+print "\n\n";
+printf("%7s%13s","tree_id","lnL");
+printf("%10s","delta") if exists($ts{KH}) || exists($ts{SH}) || exists($ts{SOWH});
 foreach my $test(sort(keys(%{$pvs{t1}}))){
 	foreach(sort(keys(%{$pvs{t1}{$test}}))){
-		print "\t$test:$_";
+		printf("%7s","$test:$_");
 	}
 }
+print "\n";
 foreach my $tree(sort(keys(%pvs))){
-	print "\n$tree\t$opt{d}{$tree}{lik}";
-	printf("\t%.4f",$opt{d}{$tree}{delta}) if exists($ts{KH}) || exists($ts{SH}) || exists($ts{SOWH});;
+	printf("%7s%13.3lf",$tree,$opt{d}{$tree}{lik});
+	printf("%10.3lf",$opt{d}{$tree}{delta}) if exists($ts{KH}) || exists($ts{SH}) || exists($ts{SOWH});
 	foreach my $test(sort(keys(%{$pvs{$tree}}))){
 		foreach(sort(keys(%{$pvs{$tree}{$test}}))){
-			printf("\t%.4f",$pvs{$tree}{$test}{$_}{pval});
+			printf("%7.3f",$pvs{$tree}{$test}{$_}{pval});
 		}
 	}
+	print "\n";
 }
-print "\n\n";
+print "\n";
 
-# ==================== FIM DO PROGRAMA ==================== #
-
-
-# ======================== Math::Gauss ======================== #
-# A SINTAXE DAS FUNÇÕES FOI MODIFICADA PARA POUPAR ESPAÇO
-sub pdf {
- 	my $x = shift if @_;
- 	my $m = @_ ? shift : 0;
- 	my $s = @_ ? shift : 1;
-	die("Can't evaluate Math::Gauss:pdf for \$s=$s not strictly positive") if $s <= 0;
- 	my $z = ($x-$m)/$s;
- 	return exp(-0.5*$z*$z)/(2.506628274631*$s);
-}
-sub cdf {
- 	my $x = shift if @_;
- 	my $m = @_ ? shift : 0;
- 	my $s = @_ ? shift : 1;
- 	die( "Can't evaluate Math::Gauss:cdf for \$s=$s not strictly positive") if $s <= 0;
- 	my $z = ($x-$m)/$s;
- 	my $t = 1.0/(1.0 + 0.2316419*abs($z));
- 	my $y = $t*(0.319381530
-	    + $t*(-0.356563782
-		  + $t*(1.781477937
-			+ $t*(-1.821255978
-				+ $t*1.330274429))));
- 	return $z > 0 ? 1.0-pdf($z)*$y : pdf($z)*$y;
-}
-sub inv_cdf { # MODIFICADA PARA RETORNAR QUANTIL TAMBÉM PARA NORMAIS NÃO-PADRÃO, PORÉM DESVIA DO QNORM DO R - RECOMENDADO ARREDONDAMENTO DO QUANTIL ATÉ SEGUNDA CASA
- 	my $p = shift if @_;
- 	my $m = @_ ? shift : 0;
- 	my $s = @_ ? shift : 1;
- 	die("Can't evaluate Math::Gauss::inv_cdf for \$p=$p outside ]0,1[") if $p<=0.0 || $p>=1.0;
- 	my $t;
- 	$t = $p<0.5 ? sqrt(-2.0*log($p)) : sqrt(-2.0*log(1.0-$p));
- 	my $y = (2.515517 + $t*(0.802853 + $t*0.010328));
- 	$y /= 1.0 + $t*(1.432788 + $t*(0.189269 + $t*0.001308));
- 	my $z;
- 	$z = $p<0.5 ? $y-$t : $t-$y;
- 	return ($z*$s)+$m;
-}
-# ============================================================ #
-
-# ================ SUBROTINAS DE ARREDONDAMENTO ============== #
-sub round { #arredondamento (5 to up) para um float
-	my $float = shift @_;
-	my $place_lim = @_ ? shift : 3;
-	return $float if int($float)-$float == 0;
-	my @sides = split(/\./,$float);
-	my @temp = split(/e/,$sides[1]);
-	my $note = "";
-	if(defined($temp[1])){
-		$temp[1] > 0 || 0-$temp[1] < $place_lim ? $note = "e".$temp[1] : return "0";
-	}
-	return $float if $place_lim >= length($temp[0]);
-	my @places = split("",$temp[0]);
-	for(my $p=$place_lim;$p<scalar(@places);$p++){
-		return (($sides[0].".".join("",@places[0..$place_lim-1]))+(1/(10**$place_lim))).$note if $places[$p]>4;
-		return $sides[0].".".join("",@places[0..$place_lim-1]).$note if $places[$p]<4;
-	}
-	return $sides[0].".".join("",@places[0..$place_lim-1]).$note;
-}
-sub multiround { #arredondamento (5 to up) para múltiplos floats
-	my @rounded;
-	my $place_lim = defined($_[1]) ? pop : 3;
-	foreach(@{$_[0]}){
-		do {(push(@rounded,$_));last} if int($_)-$_ == 0;
-		my @sides = split(/\./,$_);
-		my @temp = split(/e/,$sides[1]);
-		my $note = "";
-		if(defined($temp[1])){
-			$temp[1] >= 0 || $place_lim >= 0-$temp[1] ? $note = "e".$temp[1] : push (@rounded,0);
-		}
-		do {(push(@rounded,$_));last} if $place_lim >= length($temp[0]);
-		my @places = split("",$temp[0]);
-		for(my $p=$place_lim;$p<scalar(@places);$p++){
-			do {push(@rounded,(($sides[0].".".join("",@places[0..$place_lim-1]))+(1/(10**$place_lim))).$note);last} if $places[$p]>4;
-			do {push(@rounded,($sides[0].".".join("",@places[0..$place_lim-1])).$note);last} if $places[$p]<4 || ($p+1)==scalar(@places);
-		}
-	}
-	return @rounded;
-}
-# ============================================================ #
-
-# ================== SUBROTINAS TOPOLÓGICAS ================== #
-sub unroot { ## Desenraiza árvore em formato newick!
-  chomp($_[0]);
-  my $t = $_[0];
-  substr($t,0,1) = "";
-  substr($t,-2,1) = "";
-  my $sep = "";
-  $t =~ /\:/ ? $sep = ":" : $t =~ s/(\w+|\))/$1:/g;
-  my @tree = split(":",$t);
-  my (@subtrees,@edges,$st);
-  my $o = 0;
-  for(my $i=0; $i<scalar(@tree)-1; $i++){
-    $st .= "$tree[$i]$sep";
-    if($tree[$i] =~ /(\(+)/){
-      $o += length($1);
-    }
-    elsif($tree[$i] =~ /\)+/){
-      $o--;
-    }
-    if($o==0){
-      $st =~ s/:$//;
-      push(@subtrees,$st);
-      my @node = split(/,|;/,$tree[$i+1]);
-      push(@edges,$node[0]);
-      $tree[$i+1] = $node[1] if defined($node[1]);
-      $st = undef;
-    }
-  }
-  if(scalar(@subtrees)==2){
-    for(my $i=0;$i<=1;$i++){
-      if($subtrees[$i] =~ /\(.+\)/){
-        $subtrees[$i] = substr($subtrees[$i],1,length($subtrees[$i])-2);
-        do {my $newedge = $edges[0]+$edges[1];$subtrees[$i-1] .= "$sep$newedge"} if $sep eq ":";
-        return("(".join(",",@subtrees).");");
-      }
-    }
-  }
-  elsif(scalar(@subtrees)>2){
-    return($_[0]);
-  }
-  else{
-    die("Tree '$_[0]' is malformed; unable to unroot it.\n");
-  }
-}
-sub phyDist{ ## Dá a distância topológica entre duas árvores newick não enraizadas, pela métrica de partição (sensível apenas a topologia) ou BSD (sensível também a comprimentos de ramo)
-	my $lensense = scalar(@_)==3 ? pop : 0; ## 0 - Partition Metric (Penny & Hendy, 1985) =default= | 1 - Branch Score Distance (Kuhner & Felsenstein, 1994)
-	my %phys;
-	my $i;
-	foreach my $t(@_){
-		$i++;
-		chomp($t);
-		my $bl = 0;
-		$t =~ /\:/ ? $bl = 1 : $t =~ s/(\w+|\))/$1:/g;
-		die("Trees '$_[0]' and '$_[1]' are not comparable: BSD metric not valid for lengthless trees (try default option 0 - Penny & Handy's Partition Metric)") if $bl==0 && $lensense==1;
-		my @tree = split(":",$t);
-		my ($c,$cc) = 0;
-		my (@taxa,@term_bls,@clades,@int_bls,@ocs);
-		foreach my $slice(@tree){
-			if($slice =~ /(\d\.?\d*)?(\))?,?(\(+)?(\w+)?/){
-				if(defined($1)){
-					!defined($cc) || $cc == $ocs[-1] ? push(@term_bls,$1) : do {$int_bls[$cc] = $1;$cc = $ocs[-1]};
-				}
-				if(defined($4)){
-					push(@taxa,$4);
-					do {$cc = $c+length($3)-1;push(@ocs,($c..$cc));@clades[$c..$cc] = [()];$c+=length($3)} if defined($3);
-					foreach(@ocs){
-						push(@{$clades[$_]},$4);
-					}
-				}
-				elsif(defined($2)){
-					pop(@ocs);
-					$clades[$cc] = join(",",sort(@{$clades[$cc]}));
-					$cc = $ocs[-1] if $bl == 0;
-				}
-			}		
-		}
-		shift(@clades);
-		shift(@int_bls);
-		for(my $j=0;$j<scalar(@taxa);$j++){
-			$phys{$i}{$taxa[$j]} = shift @term_bls;
-		}
-		for(my $j=0;$j<scalar(@clades);$j++){
-			$phys{$i}{$clades[$j]} = shift @int_bls;
-		}
-	}
-	my $PD = 0;
-	my @t = (1,2);
-	for(my $i=0; $i<2; $i++){
-		foreach(keys(%{$phys{$t[$i]}})){
-			if(exists($phys{$t[$i-1]}{$_})){
-				do {$PD += ($phys{$t[$i]}{$_}-$phys{$t[$i-1]}{$_})**2;$phys{$t[$i]}{$_} = 0;$phys{$t[$i-1]}{$_} = 0} if $lensense == 1;
-			}
-			else{
-				die("Trees '$_[0]' and '$_[1]' are not comparable: different sets of taxa.\n") if $_ !~ /,/;
-				$PD += $lensense == 1 ? $phys{$t[$i]}{$_}**2 : 1;
-			}
-		}
-	}
-	return($PD);
-}
-# ============================================================ #
+# ================= END OF MAIN PROGRAM ================== #
 
 exit;
