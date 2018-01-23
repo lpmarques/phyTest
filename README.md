@@ -62,18 +62,15 @@ Em ambos os casos, [n] é opcional e define o número de categorias da distribui
 **Atenção**: apesar da combinação de categorias de taxas heterogêneas e uma categoria de sítios invariáveis (e.g. GTR+G+I) ser viável, o IQTREE sofre significativa penalidade no tempo de estimação da proporção de sítios invariáveis e da distribuição de taxas simultaneamente. Para uma análise mais rápida, é recomendável aumentar o número de categorias de taxas heterogêneas, compensando assim a ausência de uma categoria de invariáveis.
 
 
-
 `-z` (obrigatório; sem default):
 
 Especifica o arquivo contendo o grupo de árvores filogenéticas a ser testado.
 Neste aquivo, as árvores devem estar em formato newick (i.e. parentético) e cada uma deve ocupar exclusivamente uma linha.
 
 
-
 `-n` (default `1000`)
 
 Especifica o limite de réplicas (do alinhamento em -s) a serem produzidas. Utilizado apenas no caso de um ou mais testes requisitados envolverem procedimento de bootstrap paramétrico (simulações de alinhamentos), não-paramétrico (reamostras de sítios do alinhamento original) ou RELL (reamostras dos valores de verossimilhança por sítio calculados para o alinhamento original).
-
 
 
 `-t` (default `BP:0/KH:0/SH:0`)
