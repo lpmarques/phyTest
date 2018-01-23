@@ -46,7 +46,7 @@ ex: `HKY+G6+I`
 
 * [Matriz de substituição] - delimita a liberdade de variação das taxas de substituição de nucleotídeos e suas frequências de equilíbrio:
 
-  * JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou especificação em 6 dígitos (ver http://www.iqtree.org/doc/Substitution-Models#dna-models para mais detalhes).
+  * JC/JC69, F81, K2P/K80, HKY/HKY85, TN/TrN/TN93, TNe, K3P/K81, K81u, TPM2, TPM2u, TPM3, TPM3u, TIM, TIMe, TIM2, TIM2e, TIM3, TIM3e, TVM, TVMe, SYM, GTR ou codificação em 6 dígitos (ver http://www.iqtree.org/doc/Substitution-Models#dna-models para mais detalhes).
 
 
 * [Taxas heterogêneas] - admite estimação de taxas de substituição heterogêneas ao longo dos sítios do alinhamento
