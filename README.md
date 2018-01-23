@@ -1,8 +1,8 @@
-# phyTest (versão 0.6 - alpha)
+# phyTest (versão 0.7 - alpha)
 
 ## Descrição
 
-Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.6) implementa os testes KH, SH, SOWH, ELW, BP e AU (em progresso), mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
+Este programa é capaz de realizar uma gama de testes topológicos visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um dado alinhamento de sequências. O phyTest (v. 0.7) implementa os testes KH, SH, SOWH, ELW, BP e AU, mas não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Nestes casos, o phyTest conta com os programas IQTREE e Seq-Gen externamente, os quais recruta de forma automática.
 
 A grande vantagem do phyTest em relação a outros programas que implementam testes topológicos se dá na variedade de testes e de procedimentos que disponibiliza para a realização de cada um. Com o phyTest, o usuário terá mais liberdade para considerar o efeito de diferentes aproximações estatísticas sobre os valores de confiança estimados para suas hipóteses evolutivas. O programa também foi arquitetado visando máximo aproveitamento da memória RAM, possibilitando que testes complexos (envolvendo grande número de réplicas) sejam acessíveis para hardware simples.
 
