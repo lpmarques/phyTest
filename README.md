@@ -4,7 +4,7 @@
 
 Este programa é capaz de realizar uma gama de testes topológicos, visando a seleção do modelo evolutivo (i.e. árvore filogenética) mais adequado para explicar o processo de geração de um alinhamento de sequências dado pelo usuário. 
 
-O phyTest (v. 0.7) implementa os testes KH, SH, SOWH, ELW, BP e AU e possibilita sua realização por uma variedade de procedimentos, como o bootstrap paramétrico, não-paramétrico, RELL ou aproximação normal. O phyTest não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Na necessidade destes procedimentos, recruta os programas IQTREE e Seq-Gen automaticamente.
+O phyTest (v. 0.7.6) implementa os testes KH, SH, SOWH, ELW, BP e AU e possibilita sua realização por uma variedade de procedimentos, como o bootstrap paramétrico, não-paramétrico, RELL ou aproximação normal. O phyTest não é autônomo no cálculo de verossimilhança das árvores testadas ou na simulação de alinhamentos. Na necessidade destes procedimentos, recruta os programas IQTREE e Seq-Gen automaticamente.
 
 Dada a variedade de combinações possíveis entre testes e procedimentos implementados, com o phyTest o usuário terá mais liberdade para avaliar o efeito de diferentes abordagens estatísticas sobre o cálculo da confiança (p-valor) de suas hipóteses evolutivas.
 
@@ -129,8 +129,14 @@ Procedimentos:
   * `4`: válido com `BP` e `AU`
     * ======//======
     * Utiliza o algorítmo default do IQTREE para buscar a árvore e os parâmetros de substituição de máxima verossimilhança (ML) para cada réplica sorteada.
-  
+
+
  
+`-g` 
+
+Define o seed (número inteiro) que alimentará o gerador aleatório de números do phyTest e o do Seq-Gen (se recrutado). Por default, o seed é definido com base na hora de partida do programa, mas utilizando a opção `-g` para forçar o mesmo seed de uma corrida anterior, o usuário pode garantir que as mesmas réplicas serão geradas.
+
+
 
 `-nc` (default `2`)
 
