@@ -11,7 +11,7 @@ Version: 0.7 (alpha)
 	0.7.3: PT now reveals seed and allows for user provided seed
 	0.7.4: more efficient switches to id required tests and procedures
 	0.7.5: natural sorting of tree ids
-	0.7.6: corrections to phyDist and to procedures 3 and 4
+	0.7.6: corrections to phyDist function and to procedures 3 and 4
 
 Author: Lucas Marques
 
